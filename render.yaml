@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: library-management-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -e ".[dev]" && alembic upgrade head
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
