@@ -2,16 +2,9 @@ import { useState, type FormEvent } from "react";
 
 import { useAllReaders, useAllLibrarians, useUpdateReader, useUpdateLibrarian } from "../../hooks/useReaders";
 import { StatusBadge } from "../../components/StatusBadge";
+import { Avatar } from "../../components/Avatar";
 import { usePageHeader } from "../../components/layouts/PageHeaderContext";
 import type { Librarian, Reader } from "../../types/reader";
-
-function Avatar({ name }: { name: string }) {
-  return (
-    <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-muted text-xs font-semibold">
-      {name.charAt(0).toUpperCase()}
-    </span>
-  );
-}
 
 function EditReaderDialog({ reader, onClose }: { reader: Reader; onClose: () => void }) {
   const [phone, setPhone] = useState(reader.phone ?? "");

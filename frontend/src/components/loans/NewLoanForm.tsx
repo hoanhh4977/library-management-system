@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Plus, X } from "@phosphor-icons/react";
+import { ClipboardText, Plus, X } from "@phosphor-icons/react";
 
 import { useBookSearch } from "../../hooks/useBooks";
 import { useCreateLoan } from "../../hooks/useLoans";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { BookCover } from "../books/BookCover";
 import type { Book } from "../../types/book";
 
 interface LoanLine {
@@ -23,8 +24,13 @@ function BookLineInput({ line, onChange }: { line: LoanLine; onChange: (line: Lo
 
   if (line.book) {
     return (
-      <div className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm">
-        {line.book.title} <span className="text-muted-foreground">— còn {line.book.quantity}</span>
+      <div className="flex flex-1 items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2 text-sm">
+        <div className="h-9 w-6 flex-none overflow-hidden rounded">
+          <BookCover src={line.book.cover_image_url} title={line.book.title} />
+        </div>
+        <span className="min-w-0 truncate">
+          {line.book.title} <span className="text-muted-foreground">— còn {line.book.quantity}</span>
+        </span>
       </div>
     );
   }
@@ -35,19 +41,24 @@ function BookLineInput({ line, onChange }: { line: LoanLine; onChange: (line: Lo
         value={line.query}
         onChange={(e) => onChange({ ...line, query: e.target.value })}
         placeholder="Tìm sách để thêm vào phiếu…"
-        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
         aria-label="Tìm sách"
       />
       {line.query && options && options.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-card shadow-sm">
+        <ul className="absolute z-10 mt-1 w-full rounded-xl border border-border bg-card py-1 shadow-lg">
           {options.map((book) => (
             <li key={book.id}>
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-muted"
                 onClick={() => onChange({ ...line, book, query: "", error: null })}
               >
-                {book.title} <span className="text-muted-foreground">— còn {book.quantity}</span>
+                <div className="h-9 w-6 flex-none overflow-hidden rounded">
+                  <BookCover src={book.cover_image_url} title={book.title} />
+                </div>
+                <span className="min-w-0 truncate">
+                  {book.title} <span className="text-muted-foreground">— còn {book.quantity}</span>
+                </span>
               </button>
             </li>
           ))}
@@ -110,11 +121,16 @@ export function NewLoanForm({
   }
 
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <p className="mb-3 text-sm font-medium text-muted-foreground">Lập phiếu mượn mới</p>
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-info text-info-foreground">
+          <ClipboardText size={16} aria-hidden="true" />
+        </span>
+        <p className="font-heading text-sm font-semibold">Lập phiếu mượn mới</p>
+      </div>
 
       {disabled && (
-        <p className="mb-3 rounded-md bg-danger px-3 py-2 text-sm text-danger-foreground">
+        <p className="mb-3 rounded-xl bg-danger px-3 py-2 text-sm text-danger-foreground">
           Thẻ thư viện của độc giả này đang bị khóa — không thể lập phiếu mượn.
         </p>
       )}
@@ -124,11 +140,11 @@ export function NewLoanForm({
           <div key={line.key}>
             <div className="flex items-center gap-2">
               <BookLineInput line={line} onChange={(next) => updateLine(line.key, next)} />
-              <div className="flex items-center gap-1 rounded-md border border-border px-2 py-1 font-mono text-sm">
+              <div className="flex items-center gap-1 rounded-xl border border-border px-2 py-1.5 font-mono text-sm">
                 <button
                   type="button"
                   aria-label="Giảm số lượng"
-                  className="w-4 cursor-pointer text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:bg-muted"
                   onClick={() => updateLine(line.key, { ...line, quantity: Math.max(1, line.quantity - 1) })}
                 >
                   −
@@ -137,7 +153,7 @@ export function NewLoanForm({
                 <button
                   type="button"
                   aria-label="Tăng số lượng"
-                  className="w-4 cursor-pointer text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:bg-muted"
                   onClick={() => updateLine(line.key, { ...line, quantity: line.quantity + 1 })}
                 >
                   +
@@ -160,7 +176,7 @@ export function NewLoanForm({
       <button
         type="button"
         onClick={() => setLines((prev) => [...prev, newLine()])}
-        className="mt-3 flex items-center gap-1 text-sm text-accent"
+        className="mt-3 flex items-center gap-1 text-sm font-medium text-accent"
       >
         <Plus size={16} aria-hidden="true" /> Thêm sách
       </button>
@@ -172,7 +188,7 @@ export function NewLoanForm({
           type="button"
           disabled={disabled || createLoan.isPending}
           onClick={handleSubmit}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+          className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
         >
           {createLoan.isPending ? "Đang xác nhận…" : "Xác nhận lập phiếu"}
         </button>

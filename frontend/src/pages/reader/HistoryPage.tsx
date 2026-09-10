@@ -1,4 +1,8 @@
+import { CalendarBlank } from "@phosphor-icons/react";
+
 import { StatusBadge, loanDetailStatus } from "../../components/StatusBadge";
+import { BookCover } from "../../components/books/BookCover";
+import { usePageHeader } from "../../components/layouts/PageHeaderContext";
 import { useMe } from "../../hooks/useMe";
 import { useReaderLoans } from "../../hooks/useLoans";
 import { useCreateRenewRequest, useMyLoanRequests } from "../../hooks/useLoanRequests";
@@ -12,6 +16,8 @@ export function HistoryPage() {
   const { data: myRequests } = useMyLoanRequests();
   const createRenewRequest = useCreateRenewRequest();
 
+  usePageHeader({ title: "Lịch sử mượn của tôi", subtitle: "Theo dõi phiếu mượn và yêu cầu gia hạn" });
+
   const pendingRenewLoanIds = new Set(
     (myRequests ?? []).filter((r) => r.kind === "renew" && r.status === "pending").map((r) => r.loan_id),
   );
@@ -19,8 +25,6 @@ export function HistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="mb-4 font-heading text-xl font-semibold">Lịch sử mượn của tôi</h1>
-
         {isLoading && <p className="text-sm text-muted-foreground">Đang tải…</p>}
         {!isLoading && loans?.length === 0 && (
           <p className="text-sm text-muted-foreground">Bạn chưa mượn sách nào.</p>
@@ -31,17 +35,21 @@ export function HistoryPage() {
             const hasActiveBorrowing = loan.details.some((d) => d.status === "borrowing");
             const renewDisabled = loan.renewed || pendingRenewLoanIds.has(loan.id) || !hasActiveBorrowing;
             return (
-              <div key={loan.id} className="rounded-md border border-border bg-card p-4">
-                <div className="mb-2 flex items-center justify-between font-mono text-xs text-muted-foreground">
-                  <span>{loan.code}</span>
-                  <span>
-                    Mượn {loan.loan_date} · Hẹn trả {loan.due_date}
+              <div key={loan.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="font-mono text-xs text-muted-foreground">{loan.code}</span>
+                  <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                    <CalendarBlank size={13} aria-hidden="true" />
+                    {loan.loan_date} → {loan.due_date}
                   </span>
                 </div>
-                <ul className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-2.5">
                   {loan.details.map((detail) => (
-                    <li key={detail.book_id} className="flex items-center justify-between text-sm">
-                      <span>{detail.book_title}</span>
+                    <li key={detail.book_id} className="flex items-center gap-3">
+                      <div className="h-14 w-10 flex-none overflow-hidden rounded-md">
+                        <BookCover src={detail.book_cover_image_url} title={detail.book_title} />
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{detail.book_title}</span>
                       <StatusBadge status={loanDetailStatus(detail.status, loan.due_date)} />
                     </li>
                   ))}
@@ -57,7 +65,7 @@ export function HistoryPage() {
                         type="button"
                         disabled={renewDisabled || createRenewRequest.isPending}
                         onClick={() => createRenewRequest.mutate(loan.id)}
-                        className="rounded-md border border-border px-3 py-1.5 hover:bg-muted disabled:opacity-50"
+                        className="rounded-full border border-border px-3 py-1.5 font-medium hover:bg-muted disabled:opacity-50"
                       >
                         Yêu cầu gia hạn
                       </button>
@@ -71,22 +79,27 @@ export function HistoryPage() {
       </div>
 
       {myRequests && myRequests.length > 0 && (
-        <div>
-          <p className="mb-2 text-sm font-medium text-muted-foreground">Yêu cầu đã gửi</p>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="mb-3 font-heading text-sm font-semibold">Yêu cầu đã gửi</p>
           <ul className="flex flex-col gap-2">
-            {myRequests.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm"
-              >
-                <span>
-                  {r.kind === "borrow"
-                    ? `Mượn: ${r.items.map((i) => i.book_title).join(", ")}`
-                    : `Gia hạn phiếu ${r.loan_code}`}
-                </span>
-                <StatusBadge status={r.status} />
-              </li>
-            ))}
+            {myRequests.map((r) => {
+              const firstItem = r.items[0];
+              return (
+                <li key={r.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5">
+                  {r.kind === "borrow" && (
+                    <div className="h-12 w-8 flex-none overflow-hidden rounded">
+                      <BookCover src={firstItem?.book_cover_image_url ?? null} title={firstItem?.book_title ?? ""} />
+                    </div>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {r.kind === "borrow"
+                      ? `Mượn: ${r.items.map((i) => i.book_title).join(", ")}`
+                      : `Gia hạn phiếu ${r.loan_code}`}
+                  </span>
+                  <StatusBadge status={r.status} />
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

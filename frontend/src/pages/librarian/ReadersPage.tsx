@@ -45,7 +45,7 @@ export function ReadersPage() {
 
       {reader && (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
             {reader.library_card ? (
               <>
                 <StatusBadge status={reader.library_card.status} />
@@ -55,7 +55,7 @@ export function ReadersPage() {
                     type="button"
                     onClick={handleRequestUnlock}
                     disabled={requestUnlock.isPending}
-                    className="ml-auto rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+                    className="ml-auto rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
                   >
                     Gửi yêu cầu mở khóa
                   </button>
@@ -66,7 +66,7 @@ export function ReadersPage() {
                 type="button"
                 onClick={handleIssueCard}
                 disabled={issueCard.isPending}
-                className="flex items-center gap-2 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+                className="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
               >
                 <IdentificationCard size={16} aria-hidden="true" />
                 Xác minh danh tính & cấp Thẻ thư viện
@@ -76,8 +76,8 @@ export function ReadersPage() {
 
           {actionMessage && <p className="text-sm text-muted-foreground">{actionMessage}</p>}
 
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted-foreground">Lịch sử mượn</p>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="mb-3 font-heading text-sm font-semibold">Lịch sử mượn</p>
             <LoanDetailsTable loans={loans ?? []} />
           </div>
         </>

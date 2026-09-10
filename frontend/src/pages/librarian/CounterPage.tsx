@@ -20,8 +20,8 @@ export function CounterPage() {
       {reader && (
         <>
           <NewLoanForm readerId={reader.id} cardStatus={reader.library_card?.status} onDone={() => {}} />
-          <div>
-            <p className="mb-2 text-sm font-medium text-muted-foreground">Phiếu mượn của độc giả</p>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <p className="mb-3 font-heading text-sm font-semibold">Phiếu mượn của độc giả</p>
             <LoanDetailsTable loans={loans ?? []} />
           </div>
         </>
