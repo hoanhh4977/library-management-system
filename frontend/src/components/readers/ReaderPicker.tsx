@@ -24,7 +24,7 @@ export function ReaderPicker({
     () => [...(allReaders ?? [])].sort((a, b) => a.full_name.localeCompare(b.full_name)),
     [allReaders],
   );
-  const list = query ? results : defaultList;
+  const list = (query ? results : defaultList) ?? [];
 
   if (selected) {
     return (
@@ -79,7 +79,7 @@ export function ReaderPicker({
           <li className="text-sm text-muted-foreground">Chưa có độc giả nào.</li>
         )}
         {(query ? !isFetching : true) &&
-          list?.map((reader) => (
+          list.map((reader) => (
             <li key={reader.id}>
               <button
                 type="button"
