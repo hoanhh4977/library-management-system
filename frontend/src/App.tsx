@@ -9,6 +9,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AuthConfirmPage } from "./pages/AuthConfirmPage";
+import { AccountPage } from "./pages/AccountPage";
 import { SearchPage } from "./pages/reader/SearchPage";
 import { HistoryPage } from "./pages/reader/HistoryPage";
 import { CounterPage } from "./pages/librarian/CounterPage";
@@ -39,6 +40,7 @@ export default function App() {
             <Route element={<ReaderLayout />}>
               <Route path="/reader/search" element={<SearchPage />} />
               <Route path="/reader/history" element={<HistoryPage />} />
+              <Route path="/reader/account" element={<AccountPage />} />
             </Route>
           </Route>
 
@@ -48,6 +50,7 @@ export default function App() {
               <Route path="/librarian/readers" element={<ReadersPage />} />
               <Route path="/librarian/books" element={<BooksPage />} />
               <Route path="/librarian/requests" element={<LoanRequestsPage />} />
+              <Route path="/librarian/account" element={<AccountPage />} />
             </Route>
           </Route>
 
@@ -59,6 +62,7 @@ export default function App() {
               <Route path="/admin/books" element={<BooksPage />} />
               <Route path="/admin/unlock-requests" element={<UnlockRequestsPage />} />
               <Route path="/admin/people" element={<PeoplePage />} />
+              <Route path="/admin/account" element={<AccountPage />} />
             </Route>
           </Route>
 

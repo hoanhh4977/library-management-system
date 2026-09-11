@@ -206,7 +206,15 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
               <SignOut size={18} aria-hidden="true" />
               {!collapsed && "Đăng xuất"}
             </button>
-            <div className={`flex items-center gap-2.5 rounded-xl border border-border p-2 ${collapsed ? "justify-center" : ""}`}>
+            <NavLink
+              to={`/${role}/account`}
+              title={collapsed ? "Tài khoản của tôi" : undefined}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 rounded-xl border p-2 transition-colors hover:bg-muted ${
+                  collapsed ? "justify-center" : ""
+                } ${isActive ? "border-accent bg-muted" : "border-border"}`
+              }
+            >
               <Avatar name={me?.full_name ?? "?"} />
               {!collapsed && (
                 <div className="min-w-0">
@@ -214,7 +222,7 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
                   <p className="truncate font-mono text-xs text-muted-foreground">{me?.code}</p>
                 </div>
               )}
-            </div>
+            </NavLink>
           </div>
         </aside>
 

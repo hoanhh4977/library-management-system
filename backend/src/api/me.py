@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -23,6 +24,9 @@ class MeResponse(BaseModel):
     role: str
     code: str
     full_name: str
+    email: str
+    phone: str | None
+    date_of_birth: date
     library_card: CardSummary | None
 
 
@@ -43,5 +47,8 @@ async def read_me(
         role=profile.role,
         code=profile.code,
         full_name=profile.full_name,
+        email=profile.email,
+        phone=profile.phone,
+        date_of_birth=profile.date_of_birth,
         library_card=card,
     )

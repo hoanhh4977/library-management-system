@@ -122,8 +122,14 @@ export function ReaderLayout() {
               <SignOut size={18} aria-hidden="true" />
               {!collapsed && "Đăng xuất"}
             </button>
-            <div
-              className={`flex items-center gap-2.5 rounded-xl border border-border p-2 ${collapsed ? "justify-center" : ""}`}
+            <NavLink
+              to="/reader/account"
+              title={collapsed ? "Tài khoản của tôi" : undefined}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 rounded-xl border p-2 transition-colors hover:bg-muted ${
+                  collapsed ? "justify-center" : ""
+                } ${isActive ? "border-accent bg-muted" : "border-border"}`
+              }
             >
               <Avatar name={me?.full_name ?? "?"} />
               {!collapsed && (
@@ -132,7 +138,7 @@ export function ReaderLayout() {
                   <p className="truncate font-mono text-xs text-muted-foreground">{me?.code}</p>
                 </div>
               )}
-            </div>
+            </NavLink>
           </div>
         </aside>
 

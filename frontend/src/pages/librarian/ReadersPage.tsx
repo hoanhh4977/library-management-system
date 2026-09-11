@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { IdentificationCard, Lock, LockOpen, UserCircle, UsersThree } from "@phosphor-icons/react";
+import { ArrowRight, IdentificationCard, Lock, LockOpen, UserCircle, UsersThree } from "@phosphor-icons/react";
 
 import { ReaderPicker } from "../../components/readers/ReaderPicker";
 import { LoanDetailsTable } from "../../components/loans/LoanDetailsTable";
 import { Avatar } from "../../components/Avatar";
+import { EditableCell } from "../../components/EditableCell";
 import { StatusBadge } from "../../components/StatusBadge";
-import { useAllReaders, useIssueCard } from "../../hooks/useReaders";
+import { useAllReaders, useIssueCard, useUpdateReader } from "../../hooks/useReaders";
 import { useReaderLoans } from "../../hooks/useLoans";
 import { useRequestUnlock } from "../../hooks/useCards";
 import { usePageHeader } from "../../components/layouts/PageHeaderContext";
@@ -21,13 +22,15 @@ export function ReadersPage() {
   const { data: readers, isLoading } = useAllReaders();
   const issueCard = useIssueCard();
   const requestUnlock = useRequestUnlock();
+  const updateReader = useUpdateReader();
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [cardStatusFilter, setCardStatusFilter] = useState<"" | "active" | "locked">("");
 
   const handleSearchChange = useCallback((v: string) => setSearch(v), []);
 
   usePageHeader({
     title: "Độc giả",
-    subtitle: "Cấp thẻ, mở khóa và tra cứu lịch sử mượn sách",
+    subtitle: "Quản lý thông tin, cấp thẻ, mở khóa và tra cứu lịch sử mượn sách",
     search: { value: search, onChange: handleSearchChange, placeholder: "Tìm theo tên, mã, email…" },
   });
 
@@ -75,14 +78,16 @@ export function ReadersPage() {
 
   const filteredReaders = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return readers ?? [];
-    return (readers ?? []).filter(
-      (r) =>
+    return (readers ?? []).filter((r) => {
+      const matchesQuery =
+        !query ||
         r.full_name.toLowerCase().includes(query) ||
         r.code.toLowerCase().includes(query) ||
-        r.email.toLowerCase().includes(query),
-    );
-  }, [readers, search]);
+        r.email.toLowerCase().includes(query);
+      const matchesStatus = !cardStatusFilter || r.library_card?.status === cardStatusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [readers, search, cardStatusFilter]);
 
   return (
     <div className="animate-fade-in">
@@ -146,7 +151,19 @@ export function ReadersPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-gradient-to-b from-card to-muted/20">
-          <p className="border-b border-border p-4 font-heading text-sm font-semibold">Danh sách độc giả</p>
+          <div className="flex items-center justify-between gap-2 border-b border-border p-4">
+            <p className="font-heading text-sm font-semibold">Danh sách độc giả</p>
+            <select
+              value={cardStatusFilter}
+              onChange={(e) => setCardStatusFilter(e.target.value as typeof cardStatusFilter)}
+              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:border-accent focus:outline-none"
+              aria-label="Lọc theo trạng thái thẻ"
+            >
+              <option value="">Tất cả trạng thái thẻ</option>
+              <option value="active">Hoạt động</option>
+              <option value="locked">Bị khóa</option>
+            </select>
+          </div>
           {isLoading && (
             <div className="flex flex-col gap-2 p-4">
               <Skeleton className="h-12 w-full rounded-lg" />
@@ -157,27 +174,46 @@ export function ReadersPage() {
           {!isLoading && filteredReaders.length === 0 && (
             <p className="p-4 text-sm text-muted-foreground">Không tìm thấy độc giả.</p>
           )}
-          <ul className="flex max-h-[540px] flex-col gap-1 overflow-y-auto p-2">
+          <ul className="flex max-h-[540px] flex-col gap-1.5 overflow-y-auto p-2">
             {filteredReaders.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => setReader(r)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left hover:bg-muted ${
-                    reader?.id === r.id ? "bg-muted" : ""
-                  }`}
-                >
+              <li
+                key={r.id}
+                className={`rounded-xl border p-2 ${reader?.id === r.id ? "border-accent bg-muted" : "border-transparent hover:bg-muted"}`}
+              >
+                <div className="flex items-start gap-2.5">
                   <Avatar name={r.full_name} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{r.full_name}</span>
-                    <span className="block font-mono text-xs text-muted-foreground">{r.code}</span>
-                  </span>
-                  {r.library_card ? (
-                    <StatusBadge status={r.library_card.status} />
-                  ) : (
-                    <span className="flex-none text-xs text-muted-foreground">Chưa có thẻ</span>
-                  )}
-                </button>
+                  <div className="min-w-0 flex-1">
+                    <EditableCell
+                      value={r.full_name}
+                      valueClassName="text-sm font-medium"
+                      onSave={(next) => updateReader.mutateAsync({ readerId: r.id, full_name: next })}
+                    />
+                    <p className="px-1.5 font-mono text-xs text-muted-foreground">{r.code}</p>
+                    <div className="mt-0.5">
+                      <EditableCell
+                        value={r.phone ?? ""}
+                        placeholder="Chưa có SĐT"
+                        type="tel"
+                        valueClassName="text-xs text-muted-foreground"
+                        onSave={(next) => updateReader.mutateAsync({ readerId: r.id, phone: next })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-none flex-col items-end gap-1.5 pt-1">
+                    {r.library_card ? (
+                      <StatusBadge status={r.library_card.status} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Chưa có thẻ</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setReader(r)}
+                      className="flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                    >
+                      Chọn <ArrowRight size={11} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

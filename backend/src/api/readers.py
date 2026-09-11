@@ -105,7 +105,7 @@ async def get_reader(
 async def update_reader(
     reader_id: uuid.UUID,
     payload: ReaderUpdate,
-    _: Profile = Depends(require_role("admin")),
+    _: Profile = Depends(require_role("librarian", "admin")),
     session: AsyncSession = Depends(get_session),
 ) -> ReaderOut:
     reader = await session.get(Profile, reader_id)
