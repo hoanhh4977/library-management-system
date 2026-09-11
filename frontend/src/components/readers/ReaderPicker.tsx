@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MagnifyingGlass, ArrowsClockwise } from "@phosphor-icons/react";
 
-import { useReaderSearch } from "../../hooks/useReaders";
+import { useAllReaders, useReaderSearch } from "../../hooks/useReaders";
 import { StatusBadge } from "../StatusBadge";
 import { Avatar } from "../Avatar";
 import type { Reader } from "../../types/reader";
 
-/** Search-and-pick a Reader by name/code/email — used at the Librarian counter. */
+/** Search-and-pick a Reader by name/code/email — used at the Librarian counter.
+ * Shows a browsable default list (all readers, A→Z) before anything is typed,
+ * so the panel isn't just a blank box waiting for input. */
 export function ReaderPicker({
   selected,
   onSelect,
@@ -16,6 +18,13 @@ export function ReaderPicker({
 }) {
   const [query, setQuery] = useState("");
   const { data: results, isFetching } = useReaderSearch(query);
+  const { data: allReaders } = useAllReaders();
+
+  const defaultList = useMemo(
+    () => [...(allReaders ?? [])].sort((a, b) => a.full_name.localeCompare(b.full_name)),
+    [allReaders],
+  );
+  const list = query ? results : defaultList;
 
   if (selected) {
     return (
@@ -58,13 +67,19 @@ export function ReaderPicker({
           aria-label="Tìm độc giả"
         />
       </label>
-      {query && (
-        <ul className="mt-2 flex max-h-64 flex-col gap-1.5 overflow-y-auto">
-          {isFetching && <li className="text-sm text-muted-foreground">Đang tìm…</li>}
-          {!isFetching && results?.length === 0 && (
-            <li className="text-sm text-muted-foreground">Không tìm thấy độc giả.</li>
-          )}
-          {results?.map((reader) => (
+      {!query && (
+        <p className="mt-3 mb-1.5 text-xs font-medium text-muted-foreground">Tất cả độc giả</p>
+      )}
+      <ul className="mt-2 flex max-h-64 flex-col gap-1.5 overflow-y-auto">
+        {query && isFetching && <li className="text-sm text-muted-foreground">Đang tìm…</li>}
+        {query && !isFetching && results?.length === 0 && (
+          <li className="text-sm text-muted-foreground">Không tìm thấy độc giả.</li>
+        )}
+        {!query && list.length === 0 && (
+          <li className="text-sm text-muted-foreground">Chưa có độc giả nào.</li>
+        )}
+        {(query ? !isFetching : true) &&
+          list?.map((reader) => (
             <li key={reader.id}>
               <button
                 type="button"
@@ -86,8 +101,7 @@ export function ReaderPicker({
               </button>
             </li>
           ))}
-        </ul>
-      )}
+      </ul>
     </div>
   );
 }

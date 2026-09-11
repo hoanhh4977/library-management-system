@@ -1,9 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { CheckCircle } from "@phosphor-icons/react";
 
 import { api, ApiError } from "../services/apiClient";
 import { supabase } from "../services/supabaseClient";
 import { clearPendingRegistration, readPendingRegistration } from "../services/pendingRegistration";
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthField } from "../components/auth/AuthField";
 
 type Status = "waiting" | "need-details" | "submitting" | "error";
 
@@ -74,68 +77,62 @@ export function AuthConfirmPage() {
 
   if (status === "waiting" || status === "submitting") {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
+      <AuthLayout>
         <p className="text-sm text-muted-foreground">Đang xác nhận email…</p>
-      </div>
+      </AuthLayout>
     );
   }
 
   if (status === "need-details") {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-        <form
-          onSubmit={handleSubmit}
-          className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm"
-        >
-          <h1 className="mb-1 font-heading text-xl font-semibold">Hoàn tất đăng ký</h1>
-          <p className="mb-5 text-sm text-muted-foreground">
-            Email đã được xác nhận. Nhập lại vài thông tin để hoàn tất hồ sơ.
-          </p>
-          <div className="flex flex-col gap-3">
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Họ tên</span>
-              <input
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Ngày sinh</span>
-              <input
-                type="date"
-                required
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Số điện thoại</span>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
+      <AuthLayout>
+        <h1 className="font-heading text-2xl font-semibold">Hoàn tất đăng ký</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Email đã được xác nhận. Nhập lại vài thông tin để hoàn tất hồ sơ.
+        </p>
+        <form onSubmit={handleSubmit} noValidate className="mt-6 flex flex-col gap-4">
+          <AuthField
+            label="Họ tên"
+            required
+            autoComplete="name"
+            autoFocus
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <AuthField
+              label="Ngày sinh"
+              type="date"
+              required
+              autoComplete="bday"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+            <AuthField
+              label="Số điện thoại"
+              type="tel"
+              required
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
           <button
             type="submit"
-            className="mt-4 w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+            className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
           >
-            Hoàn tất
+            Hoàn tất <CheckCircle size={16} aria-hidden="true" />
           </button>
         </form>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <p className="text-sm text-danger-foreground">{error}</p>
-    </div>
+    <AuthLayout>
+      <p role="alert" className="text-sm text-danger-foreground">
+        {error}
+      </p>
+    </AuthLayout>
   );
 }

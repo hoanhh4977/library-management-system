@@ -8,5 +8,6 @@ export function useMe() {
     queryKey: ["me"],
     queryFn: () => api.get<Me>("/api/me"),
     retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 }

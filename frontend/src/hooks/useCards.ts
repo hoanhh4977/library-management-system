@@ -12,12 +12,23 @@ export interface UnlockRequest {
   requested_by_name: string;
   requested_at: string;
   status: "pending" | "approved" | "rejected";
+  reviewed_at: string | null;
 }
 
-export function usePendingUnlockRequests() {
+export function usePendingUnlockRequests(enabled = true) {
   return useQuery({
     queryKey: ["unlock-requests", "pending"],
     queryFn: () => api.get<UnlockRequest[]>("/api/cards/unlock-requests?status_filter=pending"),
+    enabled,
+  });
+}
+
+/** Every request regardless of status — used to chart request volume over time. */
+export function useAllUnlockRequests(enabled = true) {
+  return useQuery({
+    queryKey: ["unlock-requests", "all"],
+    queryFn: () => api.get<UnlockRequest[]>("/api/cards/unlock-requests?status_filter="),
+    enabled,
   });
 }
 

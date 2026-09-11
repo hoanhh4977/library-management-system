@@ -19,6 +19,7 @@ from src.schemas.loan import (
     LoanOut,
     NewLoanRequest,
     NewLoanResponse,
+    RenewLoanRequest,
     RenewResponse,
     ReportLostResponse,
     ReturnItemResponse,
@@ -89,8 +90,11 @@ async def create_loan_endpoint(
             librarian_id=librarian.id,
             card_status=card.status,
             items=[(i.book_id, i.quantity) for i in payload.items],
+            loan_period_days=payload.loan_period_days,
         )
     except LoanRejected as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except LoanOperationError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
     item_results = [LoanItemResult(book_id=b, ok=ok, detail=detail) for b, ok, detail in results]
@@ -131,11 +135,12 @@ async def return_item_endpoint(
 @router.post("/{loan_id}/renew", response_model=RenewResponse)
 async def renew_loan_endpoint(
     loan_id: uuid.UUID,
+    payload: RenewLoanRequest = RenewLoanRequest(),
     _: Profile = Depends(require_role("librarian")),
     session: AsyncSession = Depends(get_session),
 ) -> RenewResponse:
     try:
-        loan = await renew_loan(session, loan_id)
+        loan = await renew_loan(session, loan_id, payload.extension_days)
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     except LoanOperationError as exc:

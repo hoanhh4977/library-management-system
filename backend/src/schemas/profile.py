@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -28,6 +28,7 @@ class ReaderOut(BaseModel):
     phone: str | None
     email: str
     library_card: CardOut | None
+    created_at: datetime
 
 
 class ReaderUpdate(BaseModel):
@@ -47,3 +48,14 @@ class LibrarianOut(BaseModel):
 class LibrarianUpdate(BaseModel):
     full_name: str | None = None
     date_of_birth: date | None = None
+
+
+class LibrarianCreate(BaseModel):
+    full_name: str
+    email: str
+    date_of_birth: date
+
+
+class LibrarianCreateResponse(BaseModel):
+    librarian: LibrarianOut
+    temporary_password: str

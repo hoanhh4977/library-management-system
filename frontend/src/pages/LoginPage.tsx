@@ -1,7 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight } from "@phosphor-icons/react";
 
 import { signIn } from "../services/supabaseClient";
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthField, AuthPasswordField, AuthFormError } from "../components/auth/AuthField";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -9,6 +12,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -25,11 +29,13 @@ export function LoginPage() {
             ? "Email hoặc mật khẩu không đúng."
             : `Không thể kết nối tới máy chủ xác thực (${signInError.message}). Vui lòng thử lại.`,
         );
+        requestAnimationFrame(() => errorRef.current?.focus());
         return;
       }
     } catch {
       setIsSubmitting(false);
       setError("Không thể kết nối tới máy chủ xác thực. Kiểm tra kết nối mạng và thử lại.");
+      requestAnimationFrame(() => errorRef.current?.focus());
       return;
     }
     // RoleGuard resolves the right home page once /api/me can be read.
@@ -37,65 +43,56 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm"
-      >
-        <h1 className="mb-1 font-heading text-xl font-semibold">Đăng nhập</h1>
-        <p className="mb-5 text-sm text-muted-foreground">Hệ thống Quản lý Thư viện</p>
+    <AuthLayout>
+      <h1 className="font-heading text-2xl font-semibold">Đăng nhập</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Chào mừng quay lại Hệ thống Quản lý Thư viện.</p>
 
-        <label className="mb-3 block text-sm">
-          <span className="mb-1 block text-muted-foreground">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
+      <form onSubmit={handleSubmit} noValidate className="mt-6 flex flex-col gap-4">
+        <div ref={errorRef} tabIndex={-1}>
+          <AuthFormError message={error} />
+        </div>
 
-        <label className="mb-2 block text-sm">
-          <span className="mb-1 block text-muted-foreground">Mật khẩu</span>
-          <input
-            type="password"
+        <AuthField
+          label="Email"
+          type="email"
+          required
+          autoComplete="email"
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <div>
+          <AuthPasswordField
+            label="Mật khẩu"
             required
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
-        </label>
-
-        <p className="mb-4 text-right text-sm">
-          <Link to="/forgot-password" className="text-accent">
-            Quên mật khẩu?
-          </Link>
-        </p>
-
-        {error && (
-          <p role="alert" className="mb-4 text-sm text-danger-foreground">
-            {error}
+          <p className="mt-2 text-right text-sm">
+            <Link to="/forgot-password" className="text-accent hover:underline">
+              Quên mật khẩu?
+            </Link>
           </p>
-        )}
+        </div>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
+          className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
+          {!isSubmitting && <ArrowRight size={16} aria-hidden="true" />}
         </button>
-
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Chưa có tài khoản?{" "}
-          <Link to="/register" className="text-accent">
-            Đăng ký tài khoản Độc giả
-          </Link>
-        </p>
       </form>
-    </div>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Chưa có tài khoản?{" "}
+        <Link to="/register" className="font-medium text-accent hover:underline">
+          Đăng ký tài khoản Độc giả
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

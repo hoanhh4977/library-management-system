@@ -13,6 +13,7 @@ export interface Reader {
   phone: string | null;
   email: string;
   library_card: LibraryCardInfo | null;
+  created_at: string;
 }
 
 export interface Librarian {

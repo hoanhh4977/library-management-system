@@ -11,6 +11,16 @@ export function useReaderLoans(readerId: string | undefined) {
   });
 }
 
+/** Single loan by id — powers the "xem chi tiết phiếu mượn" popup, opened from
+ * anywhere a loan_code/loan reference is shown (request cards, activity rows, ...). */
+export function useLoan(loanId: string | undefined) {
+  return useQuery({
+    queryKey: ["loans", "detail", loanId],
+    queryFn: () => api.get<Loan>(`/api/loans/${loanId}`),
+    enabled: !!loanId,
+  });
+}
+
 function invalidateLoanRelated(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["loans"] });
   queryClient.invalidateQueries({ queryKey: ["readers"] });
@@ -20,8 +30,11 @@ function invalidateLoanRelated(queryClient: ReturnType<typeof useQueryClient>) {
 export function useCreateLoan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { reader_id: string; items: { book_id: string; quantity: number }[] }) =>
-      api.post<NewLoanResponse>("/api/loans", payload),
+    mutationFn: (payload: {
+      reader_id: string;
+      items: { book_id: string; quantity: number }[];
+      loan_period_days: number;
+    }) => api.post<NewLoanResponse>("/api/loans", payload),
     onSuccess: () => invalidateLoanRelated(queryClient),
   });
 }
@@ -38,7 +51,8 @@ export function useReturnItem() {
 export function useRenewLoan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (loanId: string) => api.post(`/api/loans/${loanId}/renew`),
+    mutationFn: ({ loanId, extensionDays }: { loanId: string; extensionDays: number }) =>
+      api.post(`/api/loans/${loanId}/renew`, { extension_days: extensionDays }),
     onSuccess: () => invalidateLoanRelated(queryClient),
   });
 }

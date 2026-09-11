@@ -3,6 +3,9 @@
 .env.local
 *.env
 
+# Local test credentials (real passwords for seeded/manually-created test accounts)
+account.txt
+
 # Python (backend)
 __pycache__/
 *.pyc

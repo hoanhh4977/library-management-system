@@ -11,9 +11,12 @@ settings = get_settings()
 # PgBouncer pooler (port 6543) — pooled connections are reused across different backend
 # sessions, so asyncpg's prepared-statement cache can point at a statement the current
 # physical connection never actually prepared, raising "prepared statement ... does not exist".
+#
+# pool_pre_ping is off: it would add a round-trip "SELECT 1" health check on every
+# checkout, which against a remote pooler roughly doubles per-request DB latency.
+# PgBouncer connections here are short-lived enough that staleness isn't a real risk.
 engine = create_async_engine(
     settings.sqlalchemy_database_url,
-    pool_pre_ping=True,
     connect_args={"statement_cache_size": 0},
 )
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)

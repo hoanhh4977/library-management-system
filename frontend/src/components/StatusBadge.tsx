@@ -58,7 +58,7 @@ export function StatusBadge({ status }: { status: Status }) {
   const spec = STATUS_MAP[status];
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border bg-card px-2.5 py-1 text-sm font-medium ${spec.fg}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border bg-card px-2.5 py-1 text-sm font-medium ${spec.fg}`}
       style={{ borderColor: "currentcolor" }}
     >
       <spec.Icon size={14} weight="bold" aria-hidden="true" />

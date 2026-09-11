@@ -14,3 +14,4 @@ class UnlockRequestOut(BaseModel):
     requested_by_name: str
     requested_at: datetime
     status: str
+    reviewed_at: datetime | None

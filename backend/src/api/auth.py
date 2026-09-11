@@ -26,7 +26,14 @@ async def complete_registration(
     email = claims.get("email")
     if not email:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Token không có thông tin Email")
-    if not claims.get("email_confirmed_at") and not claims.get("email_verified"):
+    # Supabase's JWT never carries `email_confirmed_at`/a top-level `email_verified`
+    # claim — that flag only ever shows up nested at `user_metadata.email_verified`
+    # (confirmed by decoding a real token). The two top-level `.get()`s above always
+    # evaluated to None, so this check was unconditionally rejecting every real
+    # signup regardless of confirmation status — just never caught before because
+    # every account used for testing so far was created directly via the Admin API
+    # (seed script / add-librarian), which never calls this endpoint at all.
+    if not claims.get("user_metadata", {}).get("email_verified"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Email chưa được xác thực")
 
     existing = await session.get(Profile, auth_user_id)
@@ -58,4 +65,5 @@ async def complete_registration(
         phone=profile.phone,
         email=profile.email,
         library_card=None,
+        created_at=profile.created_at,
     )

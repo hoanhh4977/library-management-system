@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   BookOpen,
   BookOpenText,
   ChartBar,
   ClipboardText,
+  ClockCounterClockwise,
   Tray,
   MagnifyingGlass,
   SidebarSimple,
@@ -15,7 +16,9 @@ import {
 
 import { useLogout } from "../../hooks/useLogout";
 import { useMe } from "../../hooks/useMe";
+import { Avatar } from "../Avatar";
 import { ThemeToggle } from "../ThemeToggle";
+import { NotificationBell } from "../NotificationBell";
 import { PageHeaderProvider, usePageHeaderValue } from "./PageHeaderContext";
 
 interface NavItem {
@@ -28,23 +31,68 @@ const LIBRARIAN_NAV: NavItem[] = [
   { to: "/librarian/counter", label: "Quầy giao dịch", icon: ClipboardText },
   { to: "/librarian/requests", label: "Yêu cầu từ độc giả", icon: Tray },
   { to: "/librarian/readers", label: "Độc giả", icon: UsersThree },
-  { to: "/librarian/search", label: "Tra cứu sách", icon: MagnifyingGlass },
+  { to: "/librarian/books", label: "Quản lý Sách", icon: BookOpen },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Tổng quan", icon: ChartBar },
+  { to: "/admin/activities", label: "Hoạt động thư viện", icon: ClockCounterClockwise },
+  { to: "/admin/requests", label: "Xử lý yêu cầu", icon: Tray },
   { to: "/admin/books", label: "Quản lý Sách", icon: BookOpen },
   { to: "/admin/unlock-requests", label: "Yêu cầu mở khóa thẻ", icon: IdentificationCard },
   { to: "/admin/people", label: "Độc giả & Nhân viên", icon: UsersThree },
 ];
 
+/** DOM-uncontrolled text input: React never rewrites `.value` on its own render
+ * (only when `value` changes from something OTHER than this input's own typing —
+ * see the ref-diff check below). A plain `value={...}` controlled input here forces
+ * a full state→effect→context→re-render round trip through PageHeaderContext on
+ * every keystroke; that extra indirection was racing the browser's handling of
+ * precomposed Vietnamese diacritics and silently dropping characters (confirmed by
+ * comparing against a plain uncontrolled input, which never dropped anything). */
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current && ref.current.value !== value) {
+      ref.current.value = value;
+    }
+  }, [value]);
+
+  return (
+    <input
+      ref={ref}
+      defaultValue={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder ?? "Tìm kiếm…"}
+      className="w-full rounded-full border border-border bg-background py-2 pl-9 pr-3 text-sm"
+    />
+  );
+}
+
 /** Topbar: page title/subtitle (from PageHeaderContext) on the left, an optional
  * search box in the middle, theme toggle + optional CTA on the right — ref: Bookary. */
-function Topbar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggleCollapsed: () => void }) {
+function Topbar({
+  collapsed,
+  onToggleCollapsed,
+  role,
+}: {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  role: "librarian" | "admin";
+}) {
   const header = usePageHeaderValue();
 
   return (
-    <header className="flex flex-wrap items-center gap-4 border-b border-border bg-card px-6 py-4">
+    <header className="flex flex-none flex-wrap items-center gap-4 border-b border-border bg-card px-6 py-4">
       <button
         type="button"
         onClick={onToggleCollapsed}
@@ -66,17 +114,17 @@ function Topbar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggle
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
           />
-          <input
+          <SearchInput
             value={header.search.value}
-            onChange={(e) => header.search?.onChange(e.target.value)}
-            placeholder={header.search.placeholder ?? "Tìm kiếm…"}
-            className="w-full rounded-full border border-border bg-background py-2 pl-9 pr-3 text-sm"
+            onChange={header.search.onChange}
+            placeholder={header.search.placeholder}
           />
         </label>
       )}
 
       <div className="ml-auto flex items-center gap-3">
         <ThemeToggle />
+        <NotificationBell role={role} />
         {header?.action}
       </div>
     </header>
@@ -91,11 +139,26 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
   const [collapsed, setCollapsed] = useState(false);
   const items = role === "librarian" ? LIBRARIAN_NAV : ADMIN_NAV;
 
+  // Chromium mis-computes document.documentElement's scrollHeight when a
+  // `position: sticky` descendant (the sidebar) sits inside an `overflow-hidden`
+  // ancestor — the page becomes scrollable by a phantom amount even though every
+  // pixel of real content is already contained by <main>'s own scroll. Locking the
+  // page itself while this layout is mounted keeps only <main>/<aside> scrollable,
+  // matching the rest of the shell's single-scroll-region design.
+  useEffect(() => {
+    const { documentElement } = document;
+    const previousOverflow = documentElement.style.overflow;
+    documentElement.style.overflow = "hidden";
+    return () => {
+      documentElement.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return (
     <PageHeaderProvider>
-      <div className="flex min-h-dvh bg-background text-foreground">
+      <div className="flex h-dvh overflow-hidden bg-background text-foreground">
         <aside
-          className={`hidden flex-none flex-col border-r border-border bg-sidebar py-5 transition-[width] lg:flex ${
+          className={`sticky top-0 hidden h-dvh flex-none flex-col overflow-y-auto border-r border-border bg-sidebar py-5 transition-[width] lg:flex ${
             collapsed ? "w-20 px-2" : "w-64 px-3"
           }`}
         >
@@ -144,9 +207,7 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
               {!collapsed && "Đăng xuất"}
             </button>
             <div className={`flex items-center gap-2.5 rounded-xl border border-border p-2 ${collapsed ? "justify-center" : ""}`}>
-              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-                {me?.full_name?.charAt(0).toUpperCase() ?? "?"}
-              </span>
+              <Avatar name={me?.full_name ?? "?"} />
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{me?.full_name}</p>
@@ -157,16 +218,16 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <nav className="flex gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2 lg:hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <nav className="flex flex-none gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2 lg:hidden">
             {items.map(({ to, label }) => (
               <NavLink key={to} to={to} className="flex-none text-sm text-muted-foreground">
                 {label}
               </NavLink>
             ))}
           </nav>
-          <Topbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} />
-          <main className="min-w-0 flex-1 px-6 py-6">
+          <Topbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} role={role} />
+          <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6">
             <Outlet />
           </main>
         </div>

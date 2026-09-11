@@ -32,6 +32,7 @@ async def _to_reader_out(session: AsyncSession, reader: Profile) -> ReaderOut:
         library_card=CardOut(id=card.id, code=card.code, status=card.status, issued_at=card.issued_at)
         if card
         else None,
+        created_at=reader.created_at,
     )
 
 
@@ -42,7 +43,13 @@ async def list_readers(
     session: AsyncSession = Depends(get_session),
 ) -> list[ReaderOut]:
     """FR-025 (Admin quản lý danh sách đầy đủ) and the Librarian's reader lookup used to
-    find who to issue a card / lend to — same endpoint, `q` narrows by code/name/email."""
+    find who to issue a card / lend to — same endpoint, `q` narrows by code/name/email.
+
+    Fetches every reader's card in one batched query (keyed by reader_id) rather than
+    looping `_to_reader_out` per row — that used to issue one round trip per reader,
+    which is slow against the remote (Tokyo) Supabase pooler once the list has more
+    than a couple of rows.
+    """
     stmt = select(Profile).where(Profile.role == "reader").order_by(Profile.full_name)
     if q:
         pattern = f"%{q}%"
@@ -50,7 +57,36 @@ async def list_readers(
             Profile.full_name.ilike(pattern) | Profile.code.ilike(pattern) | Profile.email.ilike(pattern)
         )
     readers = (await session.execute(stmt)).scalars().all()
-    return [await _to_reader_out(session, r) for r in readers]
+    if not readers:
+        return []
+
+    cards_by_reader = {
+        card.reader_id: card
+        for card in (
+            await session.execute(
+                select(LibraryCard).where(LibraryCard.reader_id.in_([r.id for r in readers]))
+            )
+        )
+        .scalars()
+        .all()
+    }
+    return [
+        ReaderOut(
+            id=reader.id,
+            code=reader.code,
+            full_name=reader.full_name,
+            date_of_birth=reader.date_of_birth,
+            phone=reader.phone,
+            email=reader.email,
+            library_card=(
+                CardOut(id=card.id, code=card.code, status=card.status, issued_at=card.issued_at)
+                if (card := cards_by_reader.get(reader.id))
+                else None
+            ),
+            created_at=reader.created_at,
+        )
+        for reader in readers
+    ]
 
 
 @router.get("/{reader_id}", response_model=ReaderOut)

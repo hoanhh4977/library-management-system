@@ -52,11 +52,17 @@ async def create_auth_user(client: httpx.AsyncClient, email: str) -> str:
     if resp.status_code == 200:
         return resp.json()["id"]
     if resp.status_code == 422 or "already been registered" in resp.text:
-        list_resp = await client.get("/auth/v1/admin/users", params={"email": email})
+        # Supabase's admin list-users endpoint ignores the `email` query param and
+        # just returns every user, so the match must happen client-side — taking
+        # users[0] unconditionally previously returned a DIFFERENT random existing
+        # user's id whenever this fallback path ran (see the 2026-09-11 incident:
+        # every "already registered" reader silently got reader8's auth id).
+        list_resp = await client.get("/auth/v1/admin/users")
         list_resp.raise_for_status()
         users = list_resp.json().get("users", [])
-        if users:
-            return users[0]["id"]
+        match = next((u for u in users if u["email"] == email), None)
+        if match:
+            return match["id"]
     resp.raise_for_status()
     raise RuntimeError(f"Unexpected response creating {email}: {resp.text}")
 

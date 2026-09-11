@@ -1,7 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { CheckCircle } from "@phosphor-icons/react";
 
 import { supabase, updatePassword } from "../services/supabaseClient";
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthPasswordField, AuthFormError } from "../components/auth/AuthField";
 
 /**
  * Reached by clicking the "reset password" link from the email sent by
@@ -14,6 +17,7 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
@@ -35,43 +39,42 @@ export function ResetPasswordPage() {
     setIsSubmitting(false);
     if (updateError) {
       setError("Không thể đổi mật khẩu — link có thể đã hết hạn, hãy yêu cầu link mới.");
+      requestAnimationFrame(() => errorRef.current?.focus());
       return;
     }
     navigate("/login", { replace: true });
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h1 className="mb-1 font-heading text-xl font-semibold">Đặt lại mật khẩu</h1>
+    <AuthLayout>
+      <h1 className="font-heading text-2xl font-semibold">Đặt lại mật khẩu</h1>
 
-        {!ready ? (
-          <p className="text-sm text-muted-foreground">Đang xác thực link đặt lại mật khẩu…</p>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Mật khẩu mới</span>
-              <input
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            {error && <p role="alert" className="text-sm text-danger-foreground">{error}</p>}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-1 w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
-            >
-              {isSubmitting ? "Đang lưu…" : "Đặt mật khẩu mới"}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+      {!ready ? (
+        <p className="mt-4 text-sm text-muted-foreground">Đang xác thực link đặt lại mật khẩu…</p>
+      ) : (
+        <form onSubmit={handleSubmit} noValidate className="mt-6 flex flex-col gap-4">
+          <div ref={errorRef} tabIndex={-1}>
+            <AuthFormError message={error} />
+          </div>
+          <AuthPasswordField
+            label="Mật khẩu mới"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? "Đang lưu…" : "Đặt mật khẩu mới"}
+            {!isSubmitting && <CheckCircle size={16} aria-hidden="true" />}
+          </button>
+        </form>
+      )}
+    </AuthLayout>
   );
 }

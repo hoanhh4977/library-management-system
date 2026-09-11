@@ -1,16 +1,28 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { CheckCircle, PaperPlaneTilt } from "@phosphor-icons/react";
 
-import { signUpReader } from "../services/supabaseClient";
-import { savePendingRegistration } from "../services/pendingRegistration";
+import { authErrorMessage, signUpReader } from "../services/supabaseClient";
+import { clearPendingRegistration, savePendingRegistration } from "../services/pendingRegistration";
+import { api, ApiError } from "../services/apiClient";
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthField, AuthPasswordField, AuthFormError } from "../components/auth/AuthField";
 
-/** Self-registration (FR-004/FR-005): Supabase Auth sends a confirmation link by
- * email; clicking it lands on AuthConfirmPage.tsx, which finishes creating the
- * `profiles` row. Nothing here requires typing a code. */
+/** Self-registration (FR-004/FR-005). Two possible paths depending on the
+ * Supabase project's "Confirm email" setting:
+ * - ON (default): signUp() returns no session — Supabase emails a confirmation
+ *   link; clicking it lands on AuthConfirmPage.tsx, which finishes creating the
+ *   `profiles` row.
+ * - OFF: signUp() returns an active session immediately, no email involved —
+ *   finish the profile right here instead of showing a "check your email"
+ *   screen nobody will get. Both paths call the same
+ *   /api/auth/complete-registration endpoint either way. */
 export function RegisterPage() {
+  const navigate = useNavigate();
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,100 +37,134 @@ export function RegisterPage() {
     // Saved before signUp so AuthConfirmPage can finish the profile after the
     // redirect, even though the page reload wipes this component's state.
     savePendingRegistration(email, { fullName, dateOfBirth, phone });
-    const { error: signUpError } = await signUpReader({ email, password, fullName, dateOfBirth, phone });
-    setIsSubmitting(false);
+    const { data, error: signUpError } = await signUpReader({ email, password, fullName, dateOfBirth, phone });
     if (signUpError) {
-      setError("Không thể đăng ký — email có thể đã được dùng.");
+      setIsSubmitting(false);
+      setError(authErrorMessage(signUpError, "Không thể đăng ký — vui lòng thử lại."));
+      requestAnimationFrame(() => errorRef.current?.focus());
       return;
     }
+
+    if (data.session) {
+      // Email confirmation is off — already signed in, no link to click.
+      try {
+        await api.post("/api/auth/complete-registration", {
+          full_name: fullName,
+          date_of_birth: dateOfBirth,
+          phone,
+        });
+        clearPendingRegistration();
+        navigate("/reader/search", { replace: true });
+      } catch (e) {
+        setIsSubmitting(false);
+        setError(e instanceof ApiError ? e.message : "Không thể hoàn tất đăng ký. Vui lòng thử lại.");
+        requestAnimationFrame(() => errorRef.current?.focus());
+      }
+      return;
+    }
+
+    setIsSubmitting(false);
     setSent(true);
   }
 
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm">
-        <h1 className="mb-1 font-heading text-xl font-semibold">Đăng ký tài khoản Độc giả</h1>
-        <p className="mb-5 text-sm text-muted-foreground">
-          Chỉ cần xác nhận qua email — không cần đến thư viện. Thẻ thư viện (để mượn sách)
-          sẽ được cấp sau, tại quầy.
-        </p>
-
-        {sent ? (
-          <p className="text-sm text-muted-foreground">
-            Đã gửi link xác nhận tới <strong>{email}</strong>. Mở email và bấm vào link để hoàn
-            tất đăng ký (kiểm tra cả mục Spam nếu không thấy).
+  if (sent) {
+    return (
+      <AuthLayout>
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success text-success-foreground">
+            <CheckCircle size={26} weight="fill" aria-hidden="true" />
+          </span>
+          <h1 className="mt-4 font-heading text-xl font-semibold">Kiểm tra email của bạn</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Đã gửi link xác nhận tới <strong className="text-foreground">{email}</strong>. Mở email
+            và bấm vào link để hoàn tất đăng ký (kiểm tra cả mục Spam nếu không thấy).
           </p>
-        ) : (
-          <form onSubmit={handleSignUp} className="flex flex-col gap-3">
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Họ tên</span>
-              <input
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Ngày sinh</span>
-              <input
-                type="date"
-                required
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Số điện thoại</span>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Email</span>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-muted-foreground">Mật khẩu</span>
-              <input
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-            </label>
+          <Link
+            to="/login"
+            className="mt-6 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+          >
+            Quay lại đăng nhập
+          </Link>
+        </div>
+      </AuthLayout>
+    );
+  }
 
-            {error && <p role="alert" className="text-sm text-danger-foreground">{error}</p>}
+  return (
+    <AuthLayout>
+      <h1 className="font-heading text-2xl font-semibold">Đăng ký tài khoản Độc giả</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Chỉ cần xác nhận qua email — không cần đến thư viện. Thẻ thư viện (để mượn sách) sẽ được
+        cấp sau, tại quầy.
+      </p>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-1 w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
-            >
-              {isSubmitting ? "Đang gửi link xác nhận…" : "Gửi link xác nhận qua Email"}
-            </button>
-          </form>
-        )}
+      <form onSubmit={handleSignUp} noValidate className="mt-6 flex flex-col gap-4">
+        <div ref={errorRef} tabIndex={-1}>
+          <AuthFormError message={error} />
+        </div>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Đã có tài khoản? <Link to="/login" className="text-accent">Đăng nhập</Link>
-        </p>
-      </div>
-    </div>
+        <AuthField
+          label="Họ tên"
+          required
+          autoComplete="name"
+          autoFocus
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <AuthField
+            label="Ngày sinh"
+            type="date"
+            required
+            autoComplete="bday"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+          />
+          <AuthField
+            label="Số điện thoại"
+            type="tel"
+            required
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+
+        <AuthField
+          label="Email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <AuthPasswordField
+          label="Mật khẩu"
+          required
+          minLength={8}
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSubmitting ? "Đang gửi link xác nhận…" : "Gửi link xác nhận qua Email"}
+          {!isSubmitting && <PaperPlaneTilt size={16} aria-hidden="true" />}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Đã có tài khoản?{" "}
+        <Link to="/login" className="font-medium text-accent hover:underline">
+          Đăng nhập
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }

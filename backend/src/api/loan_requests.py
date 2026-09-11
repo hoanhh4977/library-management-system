@@ -63,11 +63,67 @@ async def _to_out(session: AsyncSession, request: LoanRequest) -> LoanRequestOut
         reader_name=reader.full_name if reader else "",
         loan_id=request.loan_id,
         loan_code=loan_code,
+        extension_days=request.extension_days,
+        loan_period_days=request.loan_period_days,
         items=items,
         requested_at=request.requested_at,
         reviewed_by=request.reviewed_by,
         reviewed_at=request.reviewed_at,
     )
+
+
+async def _to_out_batch(session: AsyncSession, requests: list[LoanRequest]) -> list[LoanRequestOut]:
+    """Same shape as `_to_out`, batched — used by the list endpoints so N requests cost
+    a handful of queries total instead of ~2-3 round trips each (slow against the
+    remote Supabase pooler once the list has more than a few rows)."""
+    if not requests:
+        return []
+
+    reader_ids = {r.reader_id for r in requests}
+    readers_by_id = {
+        p.id: p for p in (await session.execute(select(Profile).where(Profile.id.in_(reader_ids)))).scalars().all()
+    }
+
+    loan_ids = {r.loan_id for r in requests if r.loan_id}
+    loan_codes_by_id = {}
+    if loan_ids:
+        loan_codes_by_id = dict(
+            (await session.execute(select(Loan.id, Loan.code).where(Loan.id.in_(loan_ids)))).all()
+        )
+
+    borrow_request_ids = [r.id for r in requests if r.kind == "borrow"]
+    items_by_request: dict[uuid.UUID, list[RequestItemOut]] = {}
+    if borrow_request_ids:
+        rows = (
+            await session.execute(
+                select(LoanRequestItem, Book.title, Book.cover_image_url)
+                .join(Book, Book.id == LoanRequestItem.book_id)
+                .where(LoanRequestItem.request_id.in_(borrow_request_ids))
+            )
+        ).all()
+        for item, title, cover_image_url in rows:
+            items_by_request.setdefault(item.request_id, []).append(
+                RequestItemOut(book_id=item.book_id, book_title=title, book_cover_image_url=cover_image_url, quantity=item.quantity)
+            )
+
+    return [
+        LoanRequestOut(
+            id=request.id,
+            kind=request.kind,
+            status=request.status,
+            reader_id=request.reader_id,
+            reader_name=readers_by_id[request.reader_id].full_name if request.reader_id in readers_by_id else "",
+            loan_id=request.loan_id,
+            loan_code=loan_codes_by_id.get(request.loan_id) if request.loan_id else None,
+            extension_days=request.extension_days,
+        loan_period_days=request.loan_period_days,
+            items=items_by_request.get(request.id, []),
+            requested_at=request.requested_at,
+            reviewed_by=request.reviewed_by,
+            reviewed_at=request.reviewed_at,
+        )
+        for request in requests
+    ]
 
 
 @router.post("/borrow", response_model=LoanRequestOut)
@@ -78,7 +134,10 @@ async def request_borrow(
 ) -> LoanRequestOut:
     try:
         request = await create_borrow_request(
-            session, reader_id=reader.id, items=[(i.book_id, i.quantity) for i in payload.items]
+            session,
+            reader_id=reader.id,
+            items=[(i.book_id, i.quantity) for i in payload.items],
+            loan_period_days=payload.loan_period_days,
         )
     except LoanRequestError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
@@ -92,7 +151,9 @@ async def request_renew(
     session: AsyncSession = Depends(get_session),
 ) -> LoanRequestOut:
     try:
-        request = await create_renew_request(session, reader_id=reader.id, loan_id=payload.loan_id)
+        request = await create_renew_request(
+            session, reader_id=reader.id, loan_id=payload.loan_id, extension_days=payload.extension_days
+        )
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
     except LoanRequestError as exc:
@@ -114,12 +175,12 @@ async def list_my_requests(
         .scalars()
         .all()
     )
-    return [await _to_out(session, r) for r in requests]
+    return await _to_out_batch(session, requests)
 
 
 @router.get("", response_model=list[LoanRequestOut])
 async def list_requests_for_review(
-    status_filter: Literal["pending", "approved", "rejected"] | None = "pending",
+    status_filter: Literal["pending", "approved", "rejected", ""] | None = "pending",
     _: Profile = Depends(require_role("librarian", "admin")),
     session: AsyncSession = Depends(get_session),
 ) -> list[LoanRequestOut]:
@@ -127,7 +188,7 @@ async def list_requests_for_review(
     if status_filter:
         stmt = stmt.where(LoanRequest.status == status_filter)
     requests = (await session.execute(stmt)).scalars().all()
-    return [await _to_out(session, r) for r in requests]
+    return await _to_out_batch(session, requests)
 
 
 async def _get_request_or_404(session: AsyncSession, request_id: uuid.UUID) -> LoanRequest:

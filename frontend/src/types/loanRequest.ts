@@ -16,6 +16,8 @@ export interface LoanRequest {
   reader_name: string;
   loan_id: string | null;
   loan_code: string | null;
+  extension_days: number | null;
+  loan_period_days: number | null;
   items: LoanRequestItemOut[];
   requested_at: string;
   reviewed_by: string | null;

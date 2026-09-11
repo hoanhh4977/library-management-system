@@ -42,7 +42,7 @@ async def search_books(
 @router.post("", response_model=BookOut)
 async def create_book(
     payload: BookCreate,
-    _: object = Depends(require_role("admin")),
+    _: object = Depends(require_role("librarian", "admin")),
     session: AsyncSession = Depends(get_session),
 ) -> Book:
     book = Book(id=uuid.uuid4(), code=f"S{uuid.uuid4().hex[:6].upper()}", **payload.model_dump())
@@ -55,7 +55,7 @@ async def create_book(
 async def update_book(
     book_id: uuid.UUID,
     payload: BookUpdate,
-    _: object = Depends(require_role("admin")),
+    _: object = Depends(require_role("librarian", "admin")),
     session: AsyncSession = Depends(get_session),
 ) -> Book:
     book = await session.get(Book, book_id)

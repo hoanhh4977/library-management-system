@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
 from src.core.deps import require_role
 from src.models.profile import Profile
-from src.schemas.profile import LibrarianOut, LibrarianUpdate
+from src.schemas.profile import (
+    LibrarianCreate,
+    LibrarianCreateResponse,
+    LibrarianOut,
+    LibrarianUpdate,
+)
+from src.services.staff_service import StaffServiceError, create_librarian
 
 router = APIRouter(prefix="/api/librarians", tags=["librarians"])
 
@@ -19,6 +25,28 @@ async def list_librarians(
 ) -> list[Profile]:
     stmt = select(Profile).where(Profile.role == "librarian").order_by(Profile.full_name)
     return (await session.execute(stmt)).scalars().all()
+
+
+@router.post("", response_model=LibrarianCreateResponse)
+async def create_librarian_endpoint(
+    payload: LibrarianCreate,
+    _: Profile = Depends(require_role("admin")),
+    session: AsyncSession = Depends(get_session),
+) -> LibrarianCreateResponse:
+    try:
+        librarian, temporary_password = await create_librarian(
+            session, full_name=payload.full_name, email=payload.email, date_of_birth=payload.date_of_birth
+        )
+    except StaffServiceError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    librarian_out = LibrarianOut(
+        id=librarian.id,
+        code=librarian.code,
+        full_name=librarian.full_name,
+        date_of_birth=librarian.date_of_birth,
+        email=librarian.email,
+    )
+    return LibrarianCreateResponse(librarian=librarian_out, temporary_password=temporary_password)
 
 
 @router.patch("/{librarian_id}", response_model=LibrarianOut)

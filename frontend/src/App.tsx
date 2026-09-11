@@ -13,12 +13,12 @@ import { SearchPage } from "./pages/reader/SearchPage";
 import { HistoryPage } from "./pages/reader/HistoryPage";
 import { CounterPage } from "./pages/librarian/CounterPage";
 import { ReadersPage } from "./pages/librarian/ReadersPage";
-import { LibrarianSearchPage } from "./pages/librarian/SearchPage";
 import { LoanRequestsPage } from "./pages/librarian/LoanRequestsPage";
 import { BooksPage } from "./pages/admin/BooksPage";
 import { UnlockRequestsPage } from "./pages/admin/UnlockRequestsPage";
 import { DashboardPage } from "./pages/admin/DashboardPage";
 import { PeoplePage } from "./pages/admin/PeoplePage";
+import { LibraryActivitiesPage } from "./pages/admin/LibraryActivitiesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
@@ -46,7 +46,7 @@ export default function App() {
             <Route element={<StaffLayout role="librarian" />}>
               <Route path="/librarian/counter" element={<CounterPage />} />
               <Route path="/librarian/readers" element={<ReadersPage />} />
-              <Route path="/librarian/search" element={<LibrarianSearchPage />} />
+              <Route path="/librarian/books" element={<BooksPage />} />
               <Route path="/librarian/requests" element={<LoanRequestsPage />} />
             </Route>
           </Route>
@@ -54,6 +54,8 @@ export default function App() {
           <Route element={<RoleGuard allow={["admin"]} />}>
             <Route element={<StaffLayout role="admin" />}>
               <Route path="/admin/dashboard" element={<DashboardPage />} />
+              <Route path="/admin/activities" element={<LibraryActivitiesPage />} />
+              <Route path="/admin/requests" element={<LoanRequestsPage />} />
               <Route path="/admin/books" element={<BooksPage />} />
               <Route path="/admin/unlock-requests" element={<UnlockRequestsPage />} />
               <Route path="/admin/people" element={<PeoplePage />} />

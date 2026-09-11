@@ -1,7 +1,12 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
+
+
+class RenewLoanRequest(BaseModel):
+    extension_days: Literal[1, 3, 5, 7] = 7
 
 
 class NewLoanItem(BaseModel):
@@ -12,6 +17,7 @@ class NewLoanItem(BaseModel):
 class NewLoanRequest(BaseModel):
     reader_id: uuid.UUID
     items: list[NewLoanItem]
+    loan_period_days: Literal[7, 14, 21, 30] = 14
 
 
 class LoanItemResult(BaseModel):

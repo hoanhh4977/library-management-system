@@ -17,6 +17,15 @@ export function usePendingLoanRequests() {
   });
 }
 
+/** Every request regardless of status — used to chart request volume over time,
+ * distinct from usePendingLoanRequests which only shows the current backlog. */
+export function useAllLoanRequests() {
+  return useQuery({
+    queryKey: ["loan-requests", "all"],
+    queryFn: () => api.get<LoanRequest[]>("/api/loan-requests?status_filter="),
+  });
+}
+
 function invalidateAfterRequestChange(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["loan-requests"] });
   queryClient.invalidateQueries({ queryKey: ["loans"] });
@@ -27,8 +36,13 @@ function invalidateAfterRequestChange(queryClient: ReturnType<typeof useQueryCli
 export function useCreateBorrowRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (items: { book_id: string; quantity: number }[]) =>
-      api.post<LoanRequest>("/api/loan-requests/borrow", { items }),
+    mutationFn: ({
+      items,
+      loanPeriodDays,
+    }: {
+      items: { book_id: string; quantity: number }[];
+      loanPeriodDays: number;
+    }) => api.post<LoanRequest>("/api/loan-requests/borrow", { items, loan_period_days: loanPeriodDays }),
     onSuccess: () => invalidateAfterRequestChange(queryClient),
   });
 }
@@ -36,7 +50,8 @@ export function useCreateBorrowRequest() {
 export function useCreateRenewRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (loanId: string) => api.post<LoanRequest>("/api/loan-requests/renew", { loan_id: loanId }),
+    mutationFn: ({ loanId, extensionDays }: { loanId: string; extensionDays: number }) =>
+      api.post<LoanRequest>("/api/loan-requests/renew", { loan_id: loanId, extension_days: extensionDays }),
     onSuccess: () => invalidateAfterRequestChange(queryClient),
   });
 }

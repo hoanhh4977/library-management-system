@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type AuthError } from "@supabase/supabase-js";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -38,6 +38,39 @@ export async function signUpReader(params: {
       },
     },
   });
+}
+
+// Maps Supabase Auth's stable `error.code` (see @supabase/auth-js error-codes.ts) to a
+// Vietnamese message. Every auth screen used to hardcode one generic "email đã được
+// dùng" string no matter what actually failed — including the free tier's very low
+// built-in email-send rate limit, which is a far more likely cause in a dev project
+// that's been used for repeated signup/reset testing than the email genuinely
+// colliding. Falls back to the raw message so an unmapped code is still visible
+// instead of silently mislabeled.
+const AUTH_ERROR_MESSAGES: Partial<Record<string, string>> = {
+  email_exists: "Email này đã được đăng ký — hãy đăng nhập hoặc dùng \"Quên mật khẩu\".",
+  user_already_exists: "Email này đã được đăng ký — hãy đăng nhập hoặc dùng \"Quên mật khẩu\".",
+  identity_already_exists: "Email này đã được đăng ký — hãy đăng nhập hoặc dùng \"Quên mật khẩu\".",
+  weak_password: "Mật khẩu chưa đủ mạnh — hãy dùng ít nhất 8 ký tự, gồm cả chữ và số.",
+  email_address_invalid: "Địa chỉ email không hợp lệ.",
+  over_email_send_rate_limit: "Hệ thống đang gửi email quá nhiều trong thời gian ngắn — vui lòng thử lại sau vài phút.",
+  over_request_rate_limit: "Quá nhiều yêu cầu trong thời gian ngắn — vui lòng thử lại sau vài phút.",
+  over_sms_send_rate_limit: "Quá nhiều yêu cầu trong thời gian ngắn — vui lòng thử lại sau vài phút.",
+  signup_disabled: "Đăng ký hiện đang tạm khóa — vui lòng liên hệ quản trị viên.",
+  email_provider_disabled: "Đăng ký qua email hiện đang tạm khóa — vui lòng liên hệ quản trị viên.",
+};
+
+export function authErrorMessage(error: AuthError | null | undefined, fallback: string): string {
+  if (!error) return fallback;
+  // `unexpected_failure` is too generic a code to map on its own — Supabase uses it
+  // for this specific case too (confirmed against the project's actual Auth API: every
+  // signup currently 500s with exactly this message, regardless of email — the custom
+  // SMTP provider (Resend) is rejecting/failing the send server-side, not a per-user
+  // problem), so sniff the message text for it specifically.
+  if (error.message?.toLowerCase().includes("sending confirmation email")) {
+    return "Hệ thống hiện không gửi được email xác nhận (lỗi từ nhà cung cấp gửi email phía máy chủ) — vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+  }
+  return AUTH_ERROR_MESSAGES[error.code ?? ""] ?? error.message ?? fallback;
 }
 
 export async function signIn(email: string, password: string) {

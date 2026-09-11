@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/cards", tags=["cards"])
 
 @router.get("/unlock-requests", response_model=list[UnlockRequestOut])
 async def list_unlock_requests(
-    status_filter: Literal["pending", "approved", "rejected"] | None = "pending",
+    status_filter: Literal["pending", "approved", "rejected", ""] | None = "pending",
     _: Profile = Depends(require_role("admin")),
     session: AsyncSession = Depends(get_session),
 ) -> list[UnlockRequestOut]:
@@ -53,6 +53,7 @@ async def list_unlock_requests(
             requested_by_name=requested_by_name,
             requested_at=req.requested_at,
             status=req.status,
+            reviewed_at=req.reviewed_at,
         )
         for req, card_code, reader_id, reader_name, requested_by_name in rows
     ]

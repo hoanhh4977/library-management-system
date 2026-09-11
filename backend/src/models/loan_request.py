@@ -27,6 +27,13 @@ class LoanRequest(Base):
     reader_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
     kind: Mapped[str] = mapped_column(LoanRequestKindEnum, nullable=False)
     loan_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("loans.id"), nullable=True)
+    # Only set for kind='renew' — how many days the reader asked to push due_date back
+    # by (1/3/5/7); NULL for kind='borrow'.
+    extension_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Only set for kind='borrow' — the loan period the reader asked for (7/14/21/30),
+    # applied to due_date on approval instead of the fixed LOAN_PERIOD_DAYS default;
+    # NULL for kind='renew'.
+    loan_period_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(LoanRequestStatusEnum, nullable=False, default="pending")
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(

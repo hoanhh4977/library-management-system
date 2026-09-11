@@ -52,3 +52,17 @@ export function useUpdateLibrarian() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["librarians"] }),
   });
 }
+
+export interface CreateLibrarianResponse {
+  librarian: Librarian;
+  temporary_password: string;
+}
+
+export function useCreateLibrarian() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { full_name: string; email: string; date_of_birth: string }) =>
+      api.post<CreateLibrarianResponse>("/api/librarians", body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["librarians"] }),
+  });
+}
