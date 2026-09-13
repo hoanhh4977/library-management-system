@@ -4,6 +4,10 @@ from datetime import date, datetime
 from pydantic import BaseModel
 
 
+class EmailExistsResponse(BaseModel):
+    exists: bool
+
+
 class CompleteRegistrationRequest(BaseModel):
     """auth_user_id/email are NOT here on purpose — they come from the verified Supabase
     JWT (see api/auth.py), never from client-supplied fields, to prevent spoofing."""

@@ -94,8 +94,8 @@ export function RegisterPage() {
     <AuthLayout>
       <h1 className="font-heading text-2xl font-semibold">Đăng ký tài khoản Độc giả</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Chỉ cần xác nhận qua email — không cần đến thư viện. Thẻ thư viện (để mượn sách) sẽ được
-        cấp sau, tại quầy.
+        Chỉ cần xác nhận qua email — không cần đến thư viện. Thẻ thư viện của bạn sẽ được cấp
+        ngay sau khi đăng ký xong.
       </p>
 
       <form onSubmit={handleSignUp} noValidate className="mt-6 flex flex-col gap-4">

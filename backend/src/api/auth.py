@@ -8,9 +8,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
 from src.core.deps import get_auth_claims
 from src.models.profile import Profile
-from src.schemas.profile import CompleteRegistrationRequest, ReaderOut
+from src.schemas.profile import CardOut, CompleteRegistrationRequest, EmailExistsResponse, ReaderOut
+from src.services.card_service import auto_issue_card
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+@router.get("/email-exists", response_model=EmailExistsResponse)
+async def email_exists(email: str, session: AsyncSession = Depends(get_session)) -> EmailExistsResponse:
+    """Public, unauthenticated lookup used by ForgotPasswordPage to show "email chưa
+    đăng ký" instead of Supabase's deliberately-ambiguous reset response. Explicit
+    trade-off the project owner asked for: this endpoint is a user-enumeration oracle
+    by design (anyone can probe which emails have accounts) — accepted in exchange for
+    clearer forgot-password UX."""
+    existing = (await session.execute(select(Profile).where(Profile.email == email))).scalar_one_or_none()
+    return EmailExistsResponse(exists=existing is not None)
 
 
 @router.post("/complete-registration", response_model=ReaderOut)
@@ -57,6 +69,11 @@ async def complete_registration(
     session.add(profile)
     await session.commit()
 
+    # FR-007/FR-008 used to require a Librarian to verify identity in person before
+    # issuing a card; self-registration now replaces that step, so the card is issued
+    # immediately — see auto_issue_card's docstring for how it differs from issue_card.
+    card = await auto_issue_card(session, reader_id=profile.id)
+
     return ReaderOut(
         id=profile.id,
         code=profile.code,
@@ -64,6 +81,6 @@ async def complete_registration(
         date_of_birth=profile.date_of_birth,
         phone=profile.phone,
         email=profile.email,
-        library_card=None,
+        library_card=CardOut(id=card.id, code=card.code, status=card.status, issued_at=card.issued_at),
         created_at=profile.created_at,
     )

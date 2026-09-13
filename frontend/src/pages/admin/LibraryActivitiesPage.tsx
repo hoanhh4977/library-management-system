@@ -1,25 +1,16 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowsClockwise,
   BookOpen,
-  Check,
   CheckCircle,
-  CircleNotch,
   DownloadSimple,
+  IdentificationCard,
   SignIn,
   Warning,
-  X,
 } from "@phosphor-icons/react";
 
 import { useActivityLog } from "../../hooks/useReports";
 import type { ActivityItem } from "../../hooks/useReports";
-import {
-  useAllLoanRequests,
-  useApproveLoanRequest,
-  usePendingLoanRequests,
-  useRejectLoanRequest,
-} from "../../hooks/useLoanRequests";
-import { ApiError } from "../../services/apiClient";
+import { useAllUnlockRequests, usePendingUnlockRequests } from "../../hooks/useCards";
 import { Avatar } from "../../components/Avatar";
 import { BookCover } from "../../components/books/BookCover";
 import { LoanDetailModal, type LoanRenewalContext } from "../../components/loans/LoanDetailModal";
@@ -34,7 +25,6 @@ import {
   weekOverWeek,
   weekOverWeekLevel,
 } from "../../lib/trend";
-import type { LoanRequest } from "../../types/loanRequest";
 
 /** Reconstructs, for each of the last `days` days, how many loan lines were overdue
  * ON that day — purely from `due_date` + `actual_return_date`, which don't change
@@ -148,99 +138,12 @@ function TopBorrowers({ items }: { items: ActivityItem[] }) {
   );
 }
 
-/** One pending request row with inline approve/reject — ref: mockup shows action
- * buttons directly on the "Yêu cầu từ độc giả" panel, not just a link elsewhere. */
-function PendingRequestRow({
-  request,
-  onViewLoan,
-}: {
-  request: LoanRequest;
-  onViewLoan: (loanId: string, renewal?: LoanRenewalContext) => void;
-}) {
-  const approve = useApproveLoanRequest();
-  const reject = useRejectLoanRequest();
-  const [error, setError] = useState<string | null>(null);
-  const busy = approve.isPending || reject.isPending;
-
-  async function handleApprove() {
-    setError(null);
-    try {
-      await approve.mutateAsync(request.id);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Không thể phê duyệt");
-    }
-  }
-
-  async function handleReject() {
-    setError(null);
-    try {
-      await reject.mutateAsync(request.id);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Không thể từ chối");
-    }
-  }
-
-  return (
-    <li className="flex flex-col gap-1.5 rounded-xl border border-border bg-background px-2.5 py-2 text-sm">
-      <div className="flex items-center gap-2.5">
-        <div className="h-10 w-7 flex-none overflow-hidden rounded">
-          <BookCover src={request.items[0]?.book_cover_image_url ?? null} title={request.reader_name} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{request.reader_name}</p>
-          {request.kind === "borrow" ? (
-            <p className="truncate text-xs text-muted-foreground">{request.items[0]?.book_title}</p>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                request.loan_id &&
-                onViewLoan(request.loan_id, { extensionDays: request.extension_days ?? 7, status: request.status })
-              }
-              className="truncate text-left text-xs text-accent underline-offset-2 hover:underline"
-            >
-              Gia hạn {request.loan_code}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-none items-center gap-1.5">
-          <button
-            type="button"
-            aria-label={reject.isPending ? "Đang từ chối…" : "Từ chối"}
-            disabled={busy}
-            onClick={handleReject}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-60"
-          >
-            {reject.isPending ? (
-              <CircleNotch size={13} className="animate-spin" aria-hidden="true" />
-            ) : (
-              <X size={13} aria-hidden="true" />
-            )}
-          </button>
-          <button
-            type="button"
-            aria-label={approve.isPending ? "Đang duyệt…" : "Phê duyệt"}
-            disabled={busy}
-            onClick={handleApprove}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground disabled:opacity-60"
-          >
-            {approve.isPending ? (
-              <CircleNotch size={13} className="animate-spin" aria-hidden="true" />
-            ) : (
-              <Check size={13} weight="bold" aria-hidden="true" />
-            )}
-          </button>
-        </div>
-      </div>
-      {error && <p className="text-xs text-danger-foreground">{error}</p>}
-    </li>
-  );
-}
-
 export function LibraryActivitiesPage() {
   const { data: log, isLoading } = useActivityLog();
-  const { data: pendingLoanRequests } = usePendingLoanRequests();
-  const { data: allLoanRequests } = useAllLoanRequests();
+  // Loan-request review is Librarian-only now — Admin only still handles card-unlock
+  // requests (see cards.py), so this page tracks that backlog instead.
+  const { data: pendingUnlockRequests } = usePendingUnlockRequests();
+  const { data: allUnlockRequests } = useAllUnlockRequests();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TabKey>("borrowing");
   const [viewLoanId, setViewLoanId] = useState<string | null>(null);
@@ -271,10 +174,10 @@ export function LibraryActivitiesPage() {
     () => ({
       checkoutsToday: items.filter((i) => i.loan_date === todayStr).reduce((s, i) => s + i.quantity, 0),
       returnsToday: items.filter((i) => i.actual_return_date === todayStr).reduce((s, i) => s + i.quantity, 0),
-      renewRequests: pendingLoanRequests?.filter((r) => r.kind === "renew").length ?? 0,
+      pendingUnlock: pendingUnlockRequests?.length ?? 0,
       overdue: items.filter((i) => i.is_overdue).length,
     }),
-    [items, todayStr, pendingLoanRequests],
+    [items, todayStr, pendingUnlockRequests],
   );
 
   // Real 14-day series for each tile's sparkline + week-over-week badge — flow
@@ -293,19 +196,16 @@ export function LibraryActivitiesPage() {
       ),
     [items],
   );
-  // "Yêu cầu gia hạn đang chờ" is a backlog SIZE, not a daily arrival count — its
+  // "Yêu cầu mở khóa đang chờ" is a backlog SIZE, not a daily arrival count — its
   // sparkline/trend must track that same backlog over time (weekOverWeekLevel), not
-  // the volume of new renew requests per day (weekOverWeek), a different number that
+  // the volume of new unlock requests per day (weekOverWeek), a different number that
   // has no fixed relationship to the "currently pending" headline it sits under.
-  const renewRequestsPerDay = useMemo(
-    () => pendingCountSeries((allLoanRequests ?? []).filter((r) => r.kind === "renew"), 14),
-    [allLoanRequests],
-  );
+  const pendingUnlockPerDay = useMemo(() => pendingCountSeries(allUnlockRequests ?? [], 14), [allUnlockRequests]);
   const overduePerDay = useMemo(() => overdueCountSeries(items, 14), [items]);
 
   const checkoutsTrend = useMemo(() => weekOverWeek(checkoutsPerDay), [checkoutsPerDay]);
   const returnsTrend = useMemo(() => weekOverWeek(returnsPerDay), [returnsPerDay]);
-  const renewRequestsTrend = useMemo(() => weekOverWeekLevel(renewRequestsPerDay), [renewRequestsPerDay]);
+  const pendingUnlockTrend = useMemo(() => weekOverWeekLevel(pendingUnlockPerDay), [pendingUnlockPerDay]);
   const overdueTrend = useMemo(() => weekOverWeekLevel(overduePerDay), [overduePerDay]);
 
   const filtered = useMemo(() => {
@@ -350,12 +250,12 @@ export function LibraryActivitiesPage() {
           trend={returnsTrend}
         />
         <StatTile
-          label="Yêu cầu gia hạn đang chờ"
-          value={stats.renewRequests}
-          icon={ArrowsClockwise}
+          label="Yêu cầu mở khóa đang chờ"
+          value={stats.pendingUnlock}
+          icon={IdentificationCard}
           tone="pending"
-          sparkline={renewRequestsPerDay}
-          trend={renewRequestsTrend}
+          sparkline={pendingUnlockPerDay}
+          trend={pendingUnlockTrend}
         />
         <StatTile
           label="Sách đang quá hạn"
@@ -465,19 +365,30 @@ export function LibraryActivitiesPage() {
         <div className="grid min-h-0 grid-rows-2 gap-2">
           <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-muted/30 p-3">
             <div className="mb-2 flex flex-none items-center justify-between">
-              <p className="font-heading text-sm font-semibold">Yêu cầu từ độc giả</p>
-              {!!pendingLoanRequests?.length && (
+              <p className="font-heading text-sm font-semibold">Yêu cầu mở khóa thẻ</p>
+              {!!pendingUnlockRequests?.length && (
                 <span className="rounded-full bg-pending px-2 py-0.5 text-xs font-medium text-pending-foreground">
-                  {pendingLoanRequests.length} đang chờ
+                  {pendingUnlockRequests.length} đang chờ
                 </span>
               )}
             </div>
-            {!pendingLoanRequests?.length ? (
+            {!pendingUnlockRequests?.length ? (
               <p className="text-sm text-muted-foreground">Không có yêu cầu nào đang chờ.</p>
             ) : (
               <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-                {pendingLoanRequests.slice(0, 4).map((req) => (
-                  <PendingRequestRow key={req.id} request={req} onViewLoan={handleViewLoan} />
+                {pendingUnlockRequests.slice(0, 4).map((req) => (
+                  <li
+                    key={req.id}
+                    className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-2.5 py-2 text-sm"
+                  >
+                    <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-pending text-pending-foreground">
+                      <IdentificationCard size={15} aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{req.reader_name}</p>
+                      <p className="truncate font-mono text-xs text-muted-foreground">{req.card_code}</p>
+                    </div>
+                  </li>
                 ))}
               </ul>
             )}

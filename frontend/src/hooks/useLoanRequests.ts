@@ -10,19 +10,25 @@ export function useMyLoanRequests() {
   });
 }
 
-export function usePendingLoanRequests() {
+/** GET /api/loan-requests is Librarian-only now (Admin only handles card-unlock
+ * requests — see cards.py) — `enabled` lets Admin-shared pages (BooksPage,
+ * NotificationBell) skip the call entirely instead of firing a 403. */
+export function usePendingLoanRequests(enabled = true) {
   return useQuery({
     queryKey: ["loan-requests", "pending"],
     queryFn: () => api.get<LoanRequest[]>("/api/loan-requests?status_filter=pending"),
+    enabled,
   });
 }
 
 /** Every request regardless of status — used to chart request volume over time,
- * distinct from usePendingLoanRequests which only shows the current backlog. */
-export function useAllLoanRequests() {
+ * distinct from usePendingLoanRequests which only shows the current backlog.
+ * Librarian-only, same as usePendingLoanRequests. */
+export function useAllLoanRequests(enabled = true) {
   return useQuery({
     queryKey: ["loan-requests", "all"],
     queryFn: () => api.get<LoanRequest[]>("/api/loan-requests?status_filter="),
+    enabled,
   });
 }
 

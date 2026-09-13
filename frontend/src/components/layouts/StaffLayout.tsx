@@ -38,7 +38,6 @@ const LIBRARIAN_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/dashboard", label: "Tổng quan", icon: ChartBar },
   { to: "/admin/activities", label: "Hoạt động thư viện", icon: ClockCounterClockwise },
-  { to: "/admin/requests", label: "Xử lý yêu cầu", icon: Tray },
   { to: "/admin/books", label: "Quản lý Sách", icon: BookOpen },
   { to: "/admin/unlock-requests", label: "Yêu cầu mở khóa thẻ", icon: IdentificationCard },
   { to: "/admin/people", label: "Độc giả & Nhân viên", icon: UsersThree },

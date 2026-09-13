@@ -181,7 +181,7 @@ async def list_my_requests(
 @router.get("", response_model=list[LoanRequestOut])
 async def list_requests_for_review(
     status_filter: Literal["pending", "approved", "rejected", ""] | None = "pending",
-    _: Profile = Depends(require_role("librarian", "admin")),
+    _: Profile = Depends(require_role("librarian")),
     session: AsyncSession = Depends(get_session),
 ) -> list[LoanRequestOut]:
     stmt = select(LoanRequest).order_by(LoanRequest.requested_at.desc())
@@ -203,7 +203,7 @@ async def _get_request_or_404(session: AsyncSession, request_id: uuid.UUID) -> L
 @router.post("/{request_id}/approve")
 async def approve(
     request_id: uuid.UUID,
-    staff: Profile = Depends(require_role("librarian", "admin")),
+    staff: Profile = Depends(require_role("librarian")),
     session: AsyncSession = Depends(get_session),
 ):
     request = await _get_request_or_404(session, request_id)
@@ -237,7 +237,7 @@ async def approve(
 @router.post("/{request_id}/reject", response_model=LoanRequestOut)
 async def reject(
     request_id: uuid.UUID,
-    staff: Profile = Depends(require_role("librarian", "admin")),
+    staff: Profile = Depends(require_role("librarian")),
     session: AsyncSession = Depends(get_session),
 ) -> LoanRequestOut:
     request = await _get_request_or_404(session, request_id)

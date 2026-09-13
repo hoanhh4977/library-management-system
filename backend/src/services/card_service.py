@@ -42,6 +42,24 @@ async def issue_card(session: AsyncSession, *, reader_id: uuid.UUID, librarian_i
     return card
 
 
+async def auto_issue_card(session: AsyncSession, *, reader_id: uuid.UUID) -> LibraryCard:
+    """Cấp Thẻ thư viện tự động ngay khi Độc giả hoàn tất tự đăng ký — no Librarian
+    involved, so `issued_by` stays NULL (see migration 0008) rather than reusing the
+    reader's own id, which would misrepresent who "issued" it. Doesn't reuse `issue_card`
+    because that one requires a librarian_id and enforces the in-person-issuance FR;
+    this path replaces that FR for self-registered readers entirely."""
+    card = LibraryCard(
+        id=uuid.uuid4(),
+        code=f"TV{uuid.uuid4().hex[:6].upper()}",
+        reader_id=reader_id,
+        issued_by=None,
+        status="active",
+    )
+    session.add(card)
+    await session.commit()
+    return card
+
+
 async def sync_card_lock_status(session: AsyncSession, reader_id: uuid.UUID) -> None:
     """Re-derive Trạng thái Thẻ thư viện from the reader's current violations (FR-009).
 

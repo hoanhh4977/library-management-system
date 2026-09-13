@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -8,9 +8,9 @@ import {
   CaretRight,
   CheckCircle,
   DownloadSimple,
+  IdentificationCard,
   Medal,
   Stack,
-  Tray,
   UsersThree,
   Warning,
 } from "@phosphor-icons/react";
@@ -29,7 +29,6 @@ import {
 
 import { useActivityTrend, useInventoryReport, useOverdueReport } from "../../hooks/useReports";
 import type { BookInventory, DailyActivity, OverdueItem } from "../../hooks/useReports";
-import { useAllLoanRequests, usePendingLoanRequests } from "../../hooks/useLoanRequests";
 import { useAllUnlockRequests, usePendingUnlockRequests } from "../../hooks/useCards";
 import { useAllReaders } from "../../hooks/useReaders";
 import { BookCover } from "../../components/books/BookCover";
@@ -329,11 +328,9 @@ function ActivityTrendChart({ days }: { days: DailyActivity[] }) {
 function OverdueTable({
   items,
   onViewLoan,
-  onViewReaderRequests,
 }: {
   items: OverdueItem[];
   onViewLoan: (loanId: string) => void;
-  onViewReaderRequests: (readerId: string) => void;
 }) {
   if (items.length === 0) {
     return (
@@ -375,15 +372,8 @@ function OverdueTable({
               </div>
             </td>
             <td className="px-4 py-2.5">
-              <button
-                type="button"
-                onClick={() => onViewReaderRequests(item.reader_id)}
-                className="block text-left hover:underline"
-                title="Xử lý yêu cầu của độc giả này"
-              >
-                <p className="truncate font-medium text-accent">{item.reader_name}</p>
-                <p className="truncate font-mono text-xs text-muted-foreground">{item.reader_code}</p>
-              </button>
+              <p className="truncate font-medium">{item.reader_name}</p>
+              <p className="truncate font-mono text-xs text-muted-foreground">{item.reader_code}</p>
             </td>
             <td className="px-4 py-2.5 font-mono text-muted-foreground">{formatShortDate(item.due_date)}</td>
             <td className="px-4 py-2.5 text-right">
@@ -537,13 +527,12 @@ function DashboardSkeleton() {
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { data: report, isLoading } = useInventoryReport();
   const { data: trend } = useActivityTrend(14);
   const { data: overdue } = useOverdueReport();
-  const { data: pendingLoanRequests } = usePendingLoanRequests();
+  // Loan-request review is Librarian-only now — Admin only still handles card-unlock
+  // requests (see cards.py), so this page no longer touches loan-request data at all.
   const { data: pendingUnlockRequests } = usePendingUnlockRequests();
-  const { data: allLoanRequests } = useAllLoanRequests();
   const { data: allUnlockRequests } = useAllUnlockRequests();
   const { data: readers } = useAllReaders();
   const [viewLoanId, setViewLoanId] = useState<string | null>(null);
@@ -599,15 +588,13 @@ export function DashboardPage() {
     [readersSparkline],
   );
 
-  // "Yêu cầu đang chờ" is a backlog SIZE (currently-pending loan + unlock requests),
+  // "Yêu cầu mở khóa đang chờ" is a backlog SIZE (currently-pending unlock requests),
   // not a daily arrival count — track that same backlog over time (weekOverWeekLevel),
   // not the volume of new requests per day (weekOverWeek), an unrelated number.
   const requestsSparkline = useMemo(() => {
-    if (!allLoanRequests || !allUnlockRequests) return undefined;
-    const loanPending = pendingCountSeries(allLoanRequests, 14);
-    const unlockPending = pendingCountSeries(allUnlockRequests, 14);
-    return loanPending.map((v, i) => v + unlockPending[i]);
-  }, [allLoanRequests, allUnlockRequests]);
+    if (!allUnlockRequests) return undefined;
+    return pendingCountSeries(allUnlockRequests, 14);
+  }, [allUnlockRequests]);
   const requestsTrend = useMemo(
     () => (requestsSparkline ? weekOverWeekLevel(requestsSparkline) : undefined),
     [requestsSparkline],
@@ -698,9 +685,9 @@ export function DashboardPage() {
           trend={readersTrend}
         />
         <StatTile
-          label="Yêu cầu đang chờ"
-          value={(pendingLoanRequests?.length ?? 0) + (pendingUnlockRequests?.length ?? 0)}
-          icon={Tray}
+          label="Yêu cầu mở khóa đang chờ"
+          value={pendingUnlockRequests?.length ?? 0}
+          icon={IdentificationCard}
           tone="pending"
           sparkline={requestsSparkline}
           trend={requestsTrend}
@@ -749,11 +736,7 @@ export function DashboardPage() {
           </div>
           <div className="overflow-y-auto">
             {overdue ? (
-              <OverdueTable
-                items={overdue.items}
-                onViewLoan={handleViewLoan}
-                onViewReaderRequests={(readerId) => navigate(`/admin/requests?reader=${readerId}`)}
-              />
+              <OverdueTable items={overdue.items} onViewLoan={handleViewLoan} />
             ) : (
               <div className="flex flex-col gap-2 p-4">
                 <Skeleton className="h-11 w-full" />
@@ -766,39 +749,23 @@ export function DashboardPage() {
         <div className="grid min-h-0 grid-cols-1 gap-2">
           <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-muted/30 p-3">
             <div className="mb-1.5 flex flex-none items-center justify-between">
-              <p className="font-heading text-sm font-semibold">Yêu cầu từ độc giả</p>
-              <NavLink to="/admin/activities" className="flex items-center gap-1 text-xs text-accent">
+              <p className="font-heading text-sm font-semibold">Yêu cầu mở khóa thẻ</p>
+              <NavLink to="/admin/unlock-requests" className="flex items-center gap-1 text-xs text-accent">
                 Xem tất cả <ArrowRight size={12} aria-hidden="true" />
               </NavLink>
             </div>
-            {!pendingLoanRequests?.length ? (
+            {!pendingUnlockRequests?.length ? (
               <p className="text-sm text-muted-foreground">Không có yêu cầu nào đang chờ.</p>
             ) : (
               <ul className="flex flex-col gap-2 overflow-y-auto">
-                {pendingLoanRequests.slice(0, 2).map((req) => (
+                {pendingUnlockRequests.slice(0, 3).map((req) => (
                   <li key={req.id} className="flex items-center gap-2.5 text-sm">
-                    <div className="h-10 w-7 flex-none overflow-hidden rounded">
-                      <BookCover src={req.items[0]?.book_cover_image_url ?? null} title={req.reader_name} />
-                    </div>
+                    <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-pending text-pending-foreground">
+                      <IdentificationCard size={15} aria-hidden="true" />
+                    </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{req.reader_name}</p>
-                      {req.kind === "borrow" ? (
-                        <p className="truncate text-xs text-muted-foreground">{req.items[0]?.book_title}</p>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            req.loan_id &&
-                            handleViewLoan(req.loan_id, {
-                              extensionDays: req.extension_days ?? 7,
-                              status: req.status,
-                            })
-                          }
-                          className="truncate text-left text-xs text-accent underline-offset-2 hover:underline"
-                        >
-                          Gia hạn {req.loan_code}
-                        </button>
-                      )}
+                      <p className="truncate font-mono text-xs text-muted-foreground">{req.card_code}</p>
                     </div>
                   </li>
                 ))}

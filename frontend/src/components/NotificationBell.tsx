@@ -7,18 +7,18 @@ import { usePendingUnlockRequests } from "../hooks/useCards";
 
 /** Bell icon in the shared topbar — surfaces the same pending loan/unlock-request
  * counts already shown elsewhere in the app (dashboard tile, sidebar badge target),
- * not a separate notifications feed we don't have data for. Admin sees both request
- * types; librarian only sees loan requests (unlock requests are admin-only, `enabled`
- * gates the query so librarians don't fire a 403). */
+ * not a separate notifications feed we don't have data for. Loan-request review is
+ * Librarian-only and card-unlock review is Admin-only (see loan_requests.py /
+ * cards.py) — each `enabled` gates its query so the other role never fires a 403. */
 export function NotificationBell({ role }: { role: "admin" | "librarian" }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const { data: loanRequests } = usePendingLoanRequests();
+  const { data: loanRequests } = usePendingLoanRequests(role === "librarian");
   const { data: unlockRequests } = usePendingUnlockRequests(role === "admin");
 
-  const loanCount = loanRequests?.length ?? 0;
+  const loanCount = role === "librarian" ? (loanRequests?.length ?? 0) : 0;
   const unlockCount = role === "admin" ? (unlockRequests?.length ?? 0) : 0;
   const total = loanCount + unlockCount;
 
@@ -64,7 +64,7 @@ export function NotificationBell({ role }: { role: "admin" | "librarian" }) {
                     type="button"
                     onClick={() => {
                       setOpen(false);
-                      navigate(role === "admin" ? "/librarian/requests" : "/librarian/requests");
+                      navigate("/librarian/requests");
                     }}
                     className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm hover:bg-muted"
                   >

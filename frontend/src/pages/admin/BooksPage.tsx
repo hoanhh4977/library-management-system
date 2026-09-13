@@ -288,9 +288,11 @@ function BookDetailPanel({
 
 export function BooksPage() {
   const { data: me } = useMe();
-  const requestsPath = me?.role === "admin" ? "/admin/requests" : "/librarian/requests";
+  const isLibrarian = me?.role === "librarian";
   const { data: books } = useAllBooks();
-  const { data: pendingRequests } = usePendingLoanRequests();
+  // Loan-request review is Librarian-only now — Admin visiting the shared /admin/books
+  // route skips this query entirely rather than firing a 403.
+  const { data: pendingRequests } = usePendingLoanRequests(isLibrarian);
   const { data: overdue } = useOverdueReport();
   const { data: inventory } = useInventoryReport();
   const { data: activityLog } = useActivityLog();
@@ -391,7 +393,7 @@ export function BooksPage() {
 
   return (
     <div className="flex h-full flex-col gap-4 animate-fade-in">
-      <div className="grid flex-none grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className={`grid flex-none grid-cols-2 gap-3 ${isLibrarian ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-info/50 p-4">
           <p className="font-mono text-2xl font-bold">{stats.availableCopies}</p>
           <p className="text-xs text-muted-foreground">Tổng số bản còn</p>
@@ -417,13 +419,15 @@ export function BooksPage() {
           </div>
           <p className="text-xs text-muted-foreground">Sách quá hạn trả</p>
         </div>
-        <NavLink
-          to={requestsPath}
-          className="rounded-2xl border border-border bg-gradient-to-br from-card to-pending/50 p-4 transition-colors hover:brightness-95"
-        >
-          <p className="font-mono text-2xl font-bold text-accent">{stats.pendingBorrowRequests}</p>
-          <p className="text-xs text-muted-foreground">Yêu cầu mượn đang chờ</p>
-        </NavLink>
+        {isLibrarian && (
+          <NavLink
+            to="/librarian/requests"
+            className="rounded-2xl border border-border bg-gradient-to-br from-card to-pending/50 p-4 transition-colors hover:brightness-95"
+          >
+            <p className="font-mono text-2xl font-bold text-accent">{stats.pendingBorrowRequests}</p>
+            <p className="text-xs text-muted-foreground">Yêu cầu mượn đang chờ</p>
+          </NavLink>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card p-4">

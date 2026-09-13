@@ -21,5 +21,8 @@ class LibraryCard(Base):
         UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False, unique=True
     )
     issued_at: Mapped[date] = mapped_column(Date, nullable=False, server_default="now()")
-    issued_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
+    # NULL means auto-issued at self-registration (no Librarian involved) — see
+    # services/card_service.py::auto_issue_card. Set when a Librarian issues one
+    # in person instead (services/card_service.py::issue_card).
+    issued_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=True)
     status: Mapped[str] = mapped_column(CardStatusEnum, nullable=False, default="active")

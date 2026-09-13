@@ -58,7 +58,6 @@ export default function App() {
             <Route element={<StaffLayout role="admin" />}>
               <Route path="/admin/dashboard" element={<DashboardPage />} />
               <Route path="/admin/activities" element={<LibraryActivitiesPage />} />
-              <Route path="/admin/requests" element={<LoanRequestsPage />} />
               <Route path="/admin/books" element={<BooksPage />} />
               <Route path="/admin/unlock-requests" element={<UnlockRequestsPage />} />
               <Route path="/admin/people" element={<PeoplePage />} />

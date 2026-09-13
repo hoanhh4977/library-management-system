@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, EnvelopeSimple, PaperPlaneTilt } from "@phosphor-icons/react";
 
 import { authErrorMessage, requestPasswordReset } from "../services/supabaseClient";
+import { api, ApiError } from "../services/apiClient";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthField, AuthFormError } from "../components/auth/AuthField";
 
@@ -17,14 +18,31 @@ export function ForgotPasswordPage() {
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
+    // Explicit trade-off (requested by the project owner over Supabase's default
+    // ambiguous response): check first and say plainly when the email has no
+    // account, instead of always showing "check your email". This does mean the
+    // endpoint is a user-enumeration oracle — accepted on purpose here.
+    try {
+      const { exists } = await api.get<{ exists: boolean }>(
+        `/api/auth/email-exists?email=${encodeURIComponent(email)}`,
+      );
+      if (!exists) {
+        setIsSubmitting(false);
+        setError("Email này chưa được đăng ký trong hệ thống.");
+        requestAnimationFrame(() => errorRef.current?.focus());
+        return;
+      }
+    } catch (e) {
+      setIsSubmitting(false);
+      setError(e instanceof ApiError ? e.message : "Không thể kiểm tra email — vui lòng thử lại.");
+      requestAnimationFrame(() => errorRef.current?.focus());
+      return;
+    }
+
     const { error: resetError } = await requestPasswordReset(email);
     setIsSubmitting(false);
     if (resetError) {
-      // A real failure (rate limit, network, provider down) — must NOT show the
-      // "check your email" screen, or the reader thinks a link is coming when it
-      // never was. Supabase itself already hides "email doesn't have an account"
-      // by always returning success for that case, so any error reaching here is
-      // a genuine one worth surfacing.
       setError(authErrorMessage(resetError, "Không thể gửi email — vui lòng thử lại."));
       requestAnimationFrame(() => errorRef.current?.focus());
       return;
@@ -41,8 +59,8 @@ export function ForgotPasswordPage() {
           </span>
           <h1 className="mt-4 font-heading text-xl font-semibold">Kiểm tra email của bạn</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Nếu <strong className="text-foreground">{email}</strong> có tài khoản, một email đặt
-            lại mật khẩu đã được gửi. Kiểm tra hộp thư (và mục Spam) rồi bấm vào link trong email.
+            Đã gửi email đặt lại mật khẩu tới <strong className="text-foreground">{email}</strong>.
+            Kiểm tra hộp thư (và mục Spam) rồi bấm vào link trong email.
           </p>
           <Link
             to="/login"
