@@ -1,12 +1,11 @@
-import { useCallback, useMemo, useState, type FormEvent } from "react";
-import { Check, Copy, Lock, LockOpen, Trash, UserCircle, UserPlus, UsersThree } from "@phosphor-icons/react";
+import { useCallback, useMemo, useState } from "react";
+import { Lock, LockOpen, Trash, UserCircle, UsersThree } from "@phosphor-icons/react";
 
 import {
   useAllReaders,
   useAllLibrarians,
   useUpdateReader,
   useUpdateLibrarian,
-  useCreateLibrarian,
   useDeleteReader,
   useDeleteLibrarian,
 } from "../../hooks/useReaders";
@@ -63,118 +62,6 @@ function ConfirmDeleteDialog({
   );
 }
 
-function AddLibrarianDialog({ onClose }: { onClose: () => void }) {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const createLibrarian = useCreateLibrarian();
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await createLibrarian.mutateAsync({ full_name: fullName, email, date_of_birth: dateOfBirth });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không thể tạo tài khoản nhân viên.");
-    }
-  }
-
-  const result = createLibrarian.data;
-
-  if (result) {
-    return (
-      <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-lg">
-          <h2 className="mb-1 font-heading text-lg font-semibold">Đã tạo tài khoản</h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Gửi mật khẩu tạm thời này cho <strong className="text-foreground">{result.librarian.full_name}</strong> —
-            họ nên đổi mật khẩu qua "Quên mật khẩu" ngay lần đăng nhập đầu tiên.
-          </p>
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-            <code className="flex-1 truncate text-sm">{result.temporary_password}</code>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(result.temporary_password);
-                setCopied(true);
-              }}
-              aria-label="Sao chép mật khẩu"
-              className="flex-none rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-            >
-              {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-          >
-            Xong
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-lg">
-        <h2 className="mb-4 font-heading text-lg font-semibold">Thêm Nhân viên thủ thư</h2>
-        <div className="flex flex-col gap-3">
-          <label className="text-sm">
-            <span className="mb-1 block text-muted-foreground">Họ tên</span>
-            <input
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-muted-foreground">Email</span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block text-muted-foreground">Ngày sinh</span>
-            <input
-              type="date"
-              required
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-        {error && (
-          <p role="alert" className="mt-3 text-sm text-danger-foreground">
-            {error}
-          </p>
-        )}
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm">
-            Hủy
-          </button>
-          <button
-            type="submit"
-            disabled={createLibrarian.isPending}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
-          >
-            {createLibrarian.isPending ? "Đang tạo…" : "Tạo tài khoản"}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
 export function PeoplePage() {
   const [tab, setTab] = useState<"readers" | "librarians">("readers");
   const { data: readers } = useAllReaders();
@@ -183,7 +70,6 @@ export function PeoplePage() {
   const updateLibrarian = useUpdateLibrarian();
   const deleteReader = useDeleteReader();
   const deleteLibrarian = useDeleteLibrarian();
-  const [addingLibrarian, setAddingLibrarian] = useState(false);
   const [deletingReader, setDeletingReader] = useState<Reader | null>(null);
   const [deletingLibrarian, setDeletingLibrarian] = useState<Librarian | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -213,24 +99,11 @@ export function PeoplePage() {
   }
 
   const handleSearchChange = useCallback((v: string) => setSearch(v), []);
-  const headerAction = useMemo(
-    () => (
-      <button
-        type="button"
-        onClick={() => setAddingLibrarian(true)}
-        className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
-      >
-        <UserPlus size={16} aria-hidden="true" /> Thêm nhân viên
-      </button>
-    ),
-    [],
-  );
 
   usePageHeader({
     title: "Độc giả & Nhân viên",
     subtitle: "Quản lý hồ sơ độc giả và nhân viên thủ thư",
     search: { value: search, onChange: handleSearchChange, placeholder: "Tìm theo tên, mã, email…" },
-    action: headerAction,
   });
 
   const activeCards = readers?.filter((r) => r.library_card?.status === "active").length ?? 0;
@@ -456,7 +329,6 @@ export function PeoplePage() {
         </div>
       )}
 
-      {addingLibrarian && <AddLibrarianDialog onClose={() => setAddingLibrarian(false)} />}
       {deletingReader && (
         <ConfirmDeleteDialog
           title="Xoá tài khoản độc giả?"
