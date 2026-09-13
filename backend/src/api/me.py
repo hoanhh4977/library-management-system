@@ -17,6 +17,7 @@ router = APIRouter(tags=["me"])
 class CardSummary(BaseModel):
     status: str
     code: str
+    issued_at: date
 
 
 class MeResponse(BaseModel):
@@ -40,7 +41,7 @@ async def read_me(
         result = await session.execute(select(LibraryCard).where(LibraryCard.reader_id == profile.id))
         row = result.scalar_one_or_none()
         if row is not None:
-            card = CardSummary(status=row.status, code=row.code)
+            card = CardSummary(status=row.status, code=row.code, issued_at=row.issued_at)
 
     return MeResponse(
         id=profile.id,

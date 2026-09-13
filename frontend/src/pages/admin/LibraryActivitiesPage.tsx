@@ -4,6 +4,7 @@ import {
   BookOpen,
   Check,
   CheckCircle,
+  CircleNotch,
   DownloadSimple,
   SignIn,
   Warning,
@@ -205,21 +206,29 @@ function PendingRequestRow({
         <div className="flex flex-none items-center gap-1.5">
           <button
             type="button"
-            aria-label="Từ chối"
+            aria-label={reject.isPending ? "Đang từ chối…" : "Từ chối"}
             disabled={busy}
             onClick={handleReject}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted"
+            className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-60"
           >
-            <X size={13} aria-hidden="true" />
+            {reject.isPending ? (
+              <CircleNotch size={13} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <X size={13} aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"
-            aria-label="Phê duyệt"
+            aria-label={approve.isPending ? "Đang duyệt…" : "Phê duyệt"}
             disabled={busy}
             onClick={handleApprove}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-foreground disabled:opacity-60"
           >
-            <Check size={13} weight="bold" aria-hidden="true" />
+            {approve.isPending ? (
+              <CircleNotch size={13} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <Check size={13} weight="bold" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -393,12 +402,12 @@ export function LibraryActivitiesPage() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <table className="w-full text-sm">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[560px] table-fixed text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="px-4 py-3">Độc giả</th>
-                  <th className="px-4 py-3">Sách</th>
+                  <th className="w-[22%] px-4 py-3">Độc giả</th>
+                  <th className="w-[38%] px-4 py-3">Sách</th>
                   <th className="px-4 py-3">Hạn trả</th>
                   <th className="px-4 py-3">Còn lại</th>
                   <th className="px-4 py-3">Trạng thái</th>

@@ -101,7 +101,13 @@ export function NewLoanForm({
   }
 
   function removeLine(key: number) {
-    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev));
+    setLines((prev) => {
+      if (prev.length > 1) return prev.filter((l) => l.key !== key);
+      // Last remaining line — dropping it entirely would leave the form with zero
+      // rows and no visible way back in except a page reload, so clear the picked
+      // book instead and drop back to search state on the same row.
+      return prev.map((l) => (l.key === key ? { ...l, book: null, query: "", error: null } : l));
+    });
   }
 
   async function handleSubmit() {

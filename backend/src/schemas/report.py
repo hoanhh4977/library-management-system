@@ -9,7 +9,7 @@ class BookInventory(BaseModel):
     code: str
     title: str
     author: str
-    category: str
+    categories: list[str]
     cover_image_url: str | None = None
     total: int
     borrowing: int

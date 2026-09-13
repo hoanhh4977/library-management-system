@@ -121,9 +121,9 @@ export function ReadersPage() {
                         type="button"
                         onClick={handleRequestUnlock}
                         disabled={requestUnlock.isPending}
-                        className="ml-auto rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted"
+                        className="ml-auto rounded-full border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-60"
                       >
-                        Gửi yêu cầu mở khóa
+                        {requestUnlock.isPending ? "Đang gửi…" : "Gửi yêu cầu mở khóa"}
                       </button>
                     )}
                   </>
@@ -132,10 +132,10 @@ export function ReadersPage() {
                     type="button"
                     onClick={handleIssueCard}
                     disabled={issueCard.isPending}
-                    className="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground"
+                    className="flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
                   >
                     <IdentificationCard size={16} aria-hidden="true" />
-                    Xác minh danh tính & cấp Thẻ thư viện
+                    {issueCard.isPending ? "Đang cấp thẻ…" : "Xác minh danh tính & cấp Thẻ thư viện"}
                   </button>
                 )}
               </div>

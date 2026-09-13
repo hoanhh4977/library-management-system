@@ -100,17 +100,21 @@ export function UnlockRequestsPage() {
                   type="button"
                   disabled={review.isPending}
                   onClick={() => review.mutate({ cardId: req.card_id, requestId: req.id, decision: "reject" })}
-                  className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
+                  className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-60"
                 >
-                  Từ chối
+                  {review.isPending && review.variables?.requestId === req.id && review.variables.decision === "reject"
+                    ? "Đang từ chối…"
+                    : "Từ chối"}
                 </button>
                 <button
                   type="button"
                   disabled={review.isPending}
                   onClick={() => review.mutate({ cardId: req.card_id, requestId: req.id, decision: "approve" })}
-                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-60"
                 >
-                  Phê duyệt
+                  {review.isPending && review.variables?.requestId === req.id && review.variables.decision === "approve"
+                    ? "Đang duyệt…"
+                    : "Phê duyệt"}
                 </button>
               </div>
             </li>

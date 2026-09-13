@@ -3,6 +3,7 @@ export type Role = "reader" | "librarian" | "admin";
 export interface CardSummary {
   status: "active" | "locked";
   code: string;
+  issued_at: string;
 }
 
 export interface Me {

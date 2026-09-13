@@ -13,7 +13,7 @@ from src.schemas.profile import (
     LibrarianOut,
     LibrarianUpdate,
 )
-from src.services.staff_service import StaffServiceError, create_librarian
+from src.services.staff_service import StaffServiceError, create_librarian, delete_librarian
 
 router = APIRouter(prefix="/api/librarians", tags=["librarians"])
 
@@ -63,3 +63,17 @@ async def update_librarian(
         setattr(librarian, field, value)
     await session.commit()
     return librarian
+
+
+@router.delete("/{librarian_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_librarian_endpoint(
+    librarian_id: uuid.UUID,
+    _: Profile = Depends(require_role("admin")),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_librarian(session, librarian_id=librarian_id)
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except StaffServiceError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc

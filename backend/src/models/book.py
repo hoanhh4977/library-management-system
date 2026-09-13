@@ -19,7 +19,6 @@ class Book(Base):
     title: Mapped[str] = mapped_column(String(100), nullable=False)
     author: Mapped[str] = mapped_column(String(100), nullable=False)
     publisher: Mapped[str] = mapped_column(String(100), nullable=False)
-    category: Mapped[str] = mapped_column(String(50), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")

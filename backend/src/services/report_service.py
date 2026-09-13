@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.book import Book
+from src.models.category import BookCategory, Category
 from src.models.loan import Loan
 from src.models.loan_detail import LoanDetail
 from src.models.profile import Profile
@@ -36,13 +37,27 @@ async def inventory_report(session: AsyncSession) -> InventoryReport:
 
     books = (await session.execute(select(Book).order_by(Book.title))).scalars().all()
 
+    categories_by_book: dict = {}
+    if books:
+        rows_raw = (
+            await session.execute(
+                select(BookCategory.book_id, Category.name)
+                .join(Category, Category.id == BookCategory.category_id)
+                .where(BookCategory.book_id.in_([b.id for b in books]))
+                .order_by(Category.name)
+            )
+        ).all()
+        categories_by_book = {book.id: [] for book in books}
+        for book_id, name in rows_raw:
+            categories_by_book[book_id].append(name)
+
     rows = [
         BookInventory(
             book_id=book.id,
             code=book.code,
             title=book.title,
             author=book.author,
-            category=book.category,
+            categories=categories_by_book.get(book.id, []),
             cover_image_url=book.cover_image_url,
             total=book.quantity + borrowing_by_book.get(book.id, 0),
             borrowing=borrowing_by_book.get(book.id, 0),

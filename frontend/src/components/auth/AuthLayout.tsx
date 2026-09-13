@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { BookOpenText, ClipboardText, IdentificationCard, MagnifyingGlass } from "@phosphor-icons/react";
+import {
+  ArrowClockwise,
+  BookOpenText,
+  ClipboardText,
+  IdentificationCard,
+  MagnifyingGlass,
+} from "@phosphor-icons/react";
 
 const FEATURES = [
   { icon: MagnifyingGlass, label: "Tra cứu sách tức thời, theo tên, tác giả hoặc thể loại" },
@@ -57,9 +63,20 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
       <div className="flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-sm">
-          <div className="mb-6 flex items-center gap-2 text-accent lg:hidden">
-            <BookOpenText size={26} weight="fill" aria-hidden="true" />
-            <span className="font-heading text-lg font-semibold">Bookary</span>
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-accent lg:hidden">
+              <BookOpenText size={26} weight="fill" aria-hidden="true" />
+              <span className="font-heading text-lg font-semibold">Bookary</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              aria-label="Làm mới trang"
+              title="Làm mới trang"
+              className="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+            >
+              <ArrowClockwise size={18} aria-hidden="true" />
+            </button>
           </div>
           {children}
         </div>

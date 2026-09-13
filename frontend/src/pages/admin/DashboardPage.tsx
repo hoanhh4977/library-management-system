@@ -61,7 +61,15 @@ const DONUT_MAX_SLICES = 5;
 function CategoryDonut({ books }: { books: BookInventory[] }) {
   const totalsByCategory = useMemo(() => {
     const map = new Map<string, number>();
-    for (const book of books) map.set(book.category, (map.get(book.category) ?? 0) + book.borrowing);
+    // A book with 2 categories counts its borrowing volume toward both — same
+    // convention as tag-based breakdowns elsewhere; the alternative (splitting a
+    // book's count across its categories) would make "% of total" not sum to 100%
+    // in a way that's harder to explain than a book appearing in more than one slice.
+    for (const book of books) {
+      for (const category of book.categories) {
+        map.set(category, (map.get(category) ?? 0) + book.borrowing);
+      }
+    }
     const sorted = [...map.entries()].filter(([, borrowing]) => borrowing > 0).sort((a, b) => b[1] - a[1]);
     const total = sorted.reduce((sum, [, v]) => sum + v, 0);
 
@@ -182,7 +190,7 @@ function TopBorrowedBooks({ books }: { books: BookInventory[] }) {
         </div>
         <div className="min-w-0">
           <span className="mb-1 inline-block rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-            {current.category}
+            {current.categories.join(", ")}
           </span>
           <p className="truncate text-sm text-muted-foreground">{current.author}</p>
           <p className="truncate font-heading text-sm font-semibold">{current.title}</p>
@@ -474,7 +482,7 @@ function StockOverview({ books }: { books: BookInventory[] }) {
 
 function downloadInventoryCsv(books: BookInventory[]) {
   const header = ["Mã sách", "Tên sách", "Tác giả", "Thể loại", "Tổng số bản", "Đang mượn", "Còn lại"];
-  const rows = books.map((b) => [b.code, b.title, b.author, b.category, b.total, b.borrowing, b.remaining]);
+  const rows = books.map((b) => [b.code, b.title, b.author, b.categories.join("; "), b.total, b.borrowing, b.remaining]);
   const csv = [header, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\r\n");

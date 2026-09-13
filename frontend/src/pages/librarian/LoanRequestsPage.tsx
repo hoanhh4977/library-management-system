@@ -90,17 +90,17 @@ function RequestCard({
             type="button"
             disabled={busy}
             onClick={() => reject.mutate(request.id)}
-            className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-60"
           >
-            Từ chối
+            {reject.isPending ? "Đang từ chối…" : "Từ chối"}
           </button>
           <button
             type="button"
             disabled={busy}
             onClick={handleApprove}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground"
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground disabled:opacity-60"
           >
-            Phê duyệt
+            {approve.isPending ? "Đang duyệt…" : "Phê duyệt"}
           </button>
         </div>
       </div>

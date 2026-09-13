@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.core.db import SessionLocal, engine
 from src.models.book import Book
+from src.models.category import BookCategory, Category
 from sqlalchemy import select
 
 # (search query for Open Library, Vietnamese display title, category)
@@ -89,11 +90,19 @@ async def main() -> None:
                 title=vn_title,
                 author=author,
                 publisher=publisher,
-                category=category,
                 quantity=random.Random(vn_title).randint(2, 5),
                 cover_image_url=cover_url,
             )
             session.add(book)
+            await session.flush()
+            category_row = (
+                await session.execute(select(Category).where(Category.name == category))
+            ).scalar_one_or_none()
+            if category_row is None:
+                category_row = Category(id=uuid.uuid4(), name=category)
+                session.add(category_row)
+                await session.flush()
+            session.add(BookCategory(book_id=book.id, category_id=category_row.id))
             added += 1
             print(f"added: {vn_title} — {author} ({category})")
 

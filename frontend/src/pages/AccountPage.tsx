@@ -188,6 +188,9 @@ export function AccountPage() {
           <InfoRow icon={EnvelopeSimple} label="Email" value={me?.email ?? ""} />
           <InfoRow icon={Phone} label="Số điện thoại" value={me?.phone || "—"} />
           <InfoRow icon={CalendarBlank} label="Ngày sinh" value={me?.date_of_birth ?? ""} />
+          {me?.role === "reader" && me.library_card && (
+            <InfoRow icon={CalendarBlank} label="Ngày cấp thẻ" value={me.library_card.issued_at} />
+          )}
         </div>
       </div>
 

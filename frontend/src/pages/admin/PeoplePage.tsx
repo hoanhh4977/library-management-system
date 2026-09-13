@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
-import { Check, Copy, Lock, LockOpen, UserCircle, UserPlus, UsersThree } from "@phosphor-icons/react";
+import { Check, Copy, Lock, LockOpen, Trash, UserCircle, UserPlus, UsersThree } from "@phosphor-icons/react";
 
 import {
   useAllReaders,
@@ -7,6 +7,8 @@ import {
   useUpdateReader,
   useUpdateLibrarian,
   useCreateLibrarian,
+  useDeleteReader,
+  useDeleteLibrarian,
 } from "../../hooks/useReaders";
 import { StatusBadge } from "../../components/StatusBadge";
 import { StatTile } from "../../components/StatTile";
@@ -16,6 +18,50 @@ import { Skeleton } from "../../components/Skeleton";
 import { usePageHeader } from "../../components/layouts/PageHeaderContext";
 import { ApiError } from "../../services/apiClient";
 import { bucketByDay, weekOverWeekLevel } from "../../lib/trend";
+import type { Librarian, Reader } from "../../types/reader";
+
+function ConfirmDeleteDialog({
+  title,
+  description,
+  onConfirm,
+  onClose,
+  isPending,
+  error,
+}: {
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  onClose: () => void;
+  isPending: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl bg-card p-5 shadow-lg">
+        <h2 className="mb-1 font-heading text-lg font-semibold">{title}</h2>
+        <p className="mb-4 text-sm text-muted-foreground">{description}</p>
+        {error && (
+          <p role="alert" className="mb-3 text-sm text-danger-foreground">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm">
+            Huỷ
+          </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={onConfirm}
+            className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-danger-foreground disabled:opacity-60"
+          >
+            {isPending ? "Đang xoá…" : "Xoá tài khoản"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddLibrarianDialog({ onClose }: { onClose: () => void }) {
   const [fullName, setFullName] = useState("");
@@ -135,9 +181,36 @@ export function PeoplePage() {
   const { data: librarians } = useAllLibrarians();
   const updateReader = useUpdateReader();
   const updateLibrarian = useUpdateLibrarian();
+  const deleteReader = useDeleteReader();
+  const deleteLibrarian = useDeleteLibrarian();
   const [addingLibrarian, setAddingLibrarian] = useState(false);
+  const [deletingReader, setDeletingReader] = useState<Reader | null>(null);
+  const [deletingLibrarian, setDeletingLibrarian] = useState<Librarian | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [cardStatusFilter, setCardStatusFilter] = useState<"" | "active" | "locked">("");
+
+  async function handleConfirmDeleteReader() {
+    if (!deletingReader) return;
+    setDeleteError(null);
+    try {
+      await deleteReader.mutateAsync(deletingReader.id);
+      setDeletingReader(null);
+    } catch (e) {
+      setDeleteError(e instanceof ApiError ? e.message : "Không thể xoá tài khoản độc giả.");
+    }
+  }
+
+  async function handleConfirmDeleteLibrarian() {
+    if (!deletingLibrarian) return;
+    setDeleteError(null);
+    try {
+      await deleteLibrarian.mutateAsync(deletingLibrarian.id);
+      setDeletingLibrarian(null);
+    } catch (e) {
+      setDeleteError(e instanceof ApiError ? e.message : "Không thể xoá tài khoản nhân viên.");
+    }
+  }
 
   const handleSearchChange = useCallback((v: string) => setSearch(v), []);
   const headerAction = useMemo(
@@ -255,20 +328,21 @@ export function PeoplePage() {
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">SĐT</th>
                 <th className="px-4 py-3">Thẻ</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {!readers &&
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3" colSpan={4}>
+                    <td className="px-4 py-3" colSpan={5}>
                       <Skeleton className="h-8 w-full" />
                     </td>
                   </tr>
                 ))}
               {readers && filteredReaders.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     Không tìm thấy độc giả phù hợp.
                   </td>
                 </tr>
@@ -300,6 +374,19 @@ export function PeoplePage() {
                   <td className="px-4 py-2.5">
                     {reader.library_card ? <StatusBadge status={reader.library_card.status} /> : "—"}
                   </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      type="button"
+                      aria-label="Xoá độc giả"
+                      onClick={() => {
+                        setDeleteError(null);
+                        setDeletingReader(reader);
+                      }}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-danger hover:text-danger-foreground"
+                    >
+                      <Trash size={15} aria-hidden="true" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -312,20 +399,21 @@ export function PeoplePage() {
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="px-4 py-3">Nhân viên</th>
                 <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {!librarians &&
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3" colSpan={2}>
+                    <td className="px-4 py-3" colSpan={3}>
                       <Skeleton className="h-8 w-full" />
                     </td>
                   </tr>
                 ))}
               {librarians && filteredLibrarians.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <td colSpan={3} className="px-4 py-6 text-center text-sm text-muted-foreground">
                     Không tìm thấy nhân viên phù hợp.
                   </td>
                 </tr>
@@ -348,6 +436,19 @@ export function PeoplePage() {
                     </div>
                   </td>
                   <td className="px-4 py-2.5">{librarian.email}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      type="button"
+                      aria-label="Xoá nhân viên"
+                      onClick={() => {
+                        setDeleteError(null);
+                        setDeletingLibrarian(librarian);
+                      }}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-danger hover:text-danger-foreground"
+                    >
+                      <Trash size={15} aria-hidden="true" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -356,6 +457,26 @@ export function PeoplePage() {
       )}
 
       {addingLibrarian && <AddLibrarianDialog onClose={() => setAddingLibrarian(false)} />}
+      {deletingReader && (
+        <ConfirmDeleteDialog
+          title="Xoá tài khoản độc giả?"
+          description={`Xoá "${deletingReader.full_name}" (${deletingReader.code}) khỏi hệ thống. Hành động này không thể hoàn tác.`}
+          isPending={deleteReader.isPending}
+          error={deleteError}
+          onConfirm={handleConfirmDeleteReader}
+          onClose={() => setDeletingReader(null)}
+        />
+      )}
+      {deletingLibrarian && (
+        <ConfirmDeleteDialog
+          title="Xoá tài khoản nhân viên?"
+          description={`Xoá "${deletingLibrarian.full_name}" (${deletingLibrarian.code}) khỏi hệ thống. Hành động này không thể hoàn tác.`}
+          isPending={deleteLibrarian.isPending}
+          error={deleteError}
+          onConfirm={handleConfirmDeleteLibrarian}
+          onClose={() => setDeletingLibrarian(null)}
+        />
+      )}
     </div>
   );
 }

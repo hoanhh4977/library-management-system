@@ -29,7 +29,52 @@ const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 15, 20, 30];
 const SELECT_CLASS =
   "rounded-full border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none";
-const emptyForm: BookInput = { title: "", author: "", publisher: "", category: "", quantity: 0, cover_image_url: "" };
+const emptyForm: BookInput = { title: "", author: "", publisher: "", categories: [], quantity: 0, cover_image_url: "" };
+
+function CategoryTagInput({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+
+  function addCategory() {
+    const name = draft.trim();
+    if (!name || value.includes(name)) {
+      setDraft("");
+      return;
+    }
+    onChange([...value, name]);
+    setDraft("");
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background p-2">
+      {value.map((name) => (
+        <span key={name} className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+          {name}
+          <button
+            type="button"
+            aria-label={`Xoá thể loại ${name}`}
+            onClick={() => onChange(value.filter((c) => c !== name))}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X size={10} aria-hidden="true" />
+          </button>
+        </span>
+      ))}
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            addCategory();
+          }
+        }}
+        onBlur={addCategory}
+        placeholder={value.length === 0 ? "Nhập thể loại, Enter để thêm…" : "Thêm…"}
+        className="min-w-[100px] flex-1 bg-transparent text-sm outline-none"
+      />
+    </div>
+  );
+}
 
 function BookFormDialog({ book, onClose }: { book: Book | null; onClose: () => void }) {
   const [form, setForm] = useState<BookInput>(
@@ -38,18 +83,24 @@ function BookFormDialog({ book, onClose }: { book: Book | null; onClose: () => v
           title: book.title,
           author: book.author,
           publisher: book.publisher,
-          category: book.category,
+          categories: book.categories,
           quantity: book.quantity,
           cover_image_url: book.cover_image_url ?? "",
         }
       : emptyForm,
   );
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const createBook = useCreateBook();
   const updateBook = useUpdateBook();
   const isPending = createBook.isPending || updateBook.isPending;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (form.categories.length === 0) {
+      setCategoryError("Cần thêm ít nhất một thể loại.");
+      return;
+    }
+    setCategoryError(null);
     const payload = { ...form, cover_image_url: form.cover_image_url || null };
     if (book) {
       await updateBook.mutateAsync({ bookId: book.id, ...payload });
@@ -66,10 +117,10 @@ function BookFormDialog({ book, onClose }: { book: Book | null; onClose: () => v
           {book ? "Cập nhật thông tin Sách" : "Thêm Sách mới"}
         </h2>
         <div className="flex flex-col gap-3">
-          {(["title", "author", "publisher", "category"] as const).map((field) => (
+          {(["title", "author", "publisher"] as const).map((field) => (
             <label key={field} className="text-sm">
               <span className="mb-1 block text-muted-foreground">
-                {{ title: "Tên sách", author: "Tác giả", publisher: "Nhà xuất bản", category: "Thể loại" }[field]}
+                {{ title: "Tên sách", author: "Tác giả", publisher: "Nhà xuất bản" }[field]}
               </span>
               <input
                 required
@@ -79,6 +130,17 @@ function BookFormDialog({ book, onClose }: { book: Book | null; onClose: () => v
               />
             </label>
           ))}
+          <label className="text-sm">
+            <span className="mb-1 block text-muted-foreground">Thể loại</span>
+            <CategoryTagInput
+              value={form.categories}
+              onChange={(categories) => {
+                setForm({ ...form, categories });
+                setCategoryError(null);
+              }}
+            />
+            {categoryError && <p className="mt-1 text-xs text-danger-foreground">{categoryError}</p>}
+          </label>
           <label className="text-sm">
             <span className="mb-1 block text-muted-foreground">Số lượng</span>
             <input
@@ -149,9 +211,16 @@ function BookDetailPanel({
           <X size={16} aria-hidden="true" />
         </button>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-3 pt-10">
-          <span className="mb-1.5 inline-block rounded-full border border-white/40 px-2 py-0.5 text-xs text-white">
-            {book.category}
-          </span>
+          <div className="mb-1.5 flex flex-wrap gap-1">
+            {book.categories.map((name) => (
+              <span
+                key={name}
+                className="inline-block rounded-full border border-white/40 px-2 py-0.5 text-xs text-white"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
           <p className="font-heading text-lg font-semibold leading-tight text-white">{book.title}</p>
           <p className="text-sm text-white/80">{book.author}</p>
         </div>
@@ -273,7 +342,7 @@ export function BooksPage() {
   }, [books, pendingRequests, overdue]);
 
   const categories = useMemo(
-    () => [...new Set((books ?? []).map((b) => b.category))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set((books ?? []).flatMap((b) => b.categories))].sort((a, b) => a.localeCompare(b)),
     [books],
   );
 
@@ -287,7 +356,7 @@ export function BooksPage() {
     const query = search.trim().toLowerCase();
     const rows = (books ?? []).filter((b) => {
       const matchesQuery = !query || b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query);
-      const matchesCategory = !categoryFilter || b.category === categoryFilter;
+      const matchesCategory = !categoryFilter || b.categories.includes(categoryFilter);
       const matchesAvailability =
         !availabilityFilter ||
         (availabilityFilter === "out" && b.quantity === 0) ||

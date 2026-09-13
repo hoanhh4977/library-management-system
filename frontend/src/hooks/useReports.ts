@@ -7,7 +7,7 @@ export interface BookInventory {
   code: string;
   title: string;
   author: string;
-  category: string;
+  categories: string[];
   cover_image_url: string | null;
   total: number;
   borrowing: number;

@@ -13,7 +13,7 @@ from src.models.loan_detail import LoanDetail
 from src.models.profile import Profile
 from src.schemas.loan import LoanDetailOut, LoanOut
 from src.schemas.profile import CardOut, ReaderOut, ReaderUpdate
-from src.services.card_service import CardServiceError, issue_card
+from src.services.card_service import CardServiceError, delete_reader, issue_card
 
 router = APIRouter(prefix="/api/readers", tags=["readers"])
 
@@ -115,6 +115,20 @@ async def update_reader(
         setattr(reader, field, value)
     await session.commit()
     return await _to_reader_out(session, reader)
+
+
+@router.delete("/{reader_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_reader_endpoint(
+    reader_id: uuid.UUID,
+    _: Profile = Depends(require_role("admin")),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        await delete_reader(session, reader_id=reader_id)
+    except LookupError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except CardServiceError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.post("/{reader_id}/card", response_model=CardOut)

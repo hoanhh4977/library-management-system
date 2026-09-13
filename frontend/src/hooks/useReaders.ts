@@ -53,6 +53,22 @@ export function useUpdateLibrarian() {
   });
 }
 
+export function useDeleteReader() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (readerId: string) => api.delete(`/api/readers/${readerId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["readers"] }),
+  });
+}
+
+export function useDeleteLibrarian() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (librarianId: string) => api.delete(`/api/librarians/${librarianId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["librarians"] }),
+  });
+}
+
 export interface CreateLibrarianResponse {
   librarian: Librarian;
   temporary_password: string;

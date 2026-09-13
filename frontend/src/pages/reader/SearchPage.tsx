@@ -56,12 +56,12 @@ export function SearchPage() {
     const totalTitles = books?.length ?? 0;
     const totalCopies = books?.reduce((sum, b) => sum + b.quantity, 0) ?? 0;
     const outOfStock = books?.filter((b) => b.quantity === 0).length ?? 0;
-    const categories = new Set((books ?? []).map((b) => b.category)).size;
+    const categories = new Set((books ?? []).flatMap((b) => b.categories)).size;
     return { totalTitles, totalCopies, outOfStock, categories };
   }, [books]);
 
   const categories = useMemo(
-    () => [...new Set((books ?? []).map((b) => b.category))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set((books ?? []).flatMap((b) => b.categories))].sort((a, b) => a.localeCompare(b)),
     [books],
   );
 
@@ -70,7 +70,7 @@ export function SearchPage() {
     return (books ?? []).filter((b) => {
       const matchesQuery =
         !query || b.title.toLowerCase().includes(query) || b.author.toLowerCase().includes(query);
-      const matchesCategory = !categoryFilter || b.category === categoryFilter;
+      const matchesCategory = !categoryFilter || b.categories.includes(categoryFilter);
       const matchesAvailability =
         !availabilityFilter ||
         (availabilityFilter === "out" && b.quantity === 0) ||
@@ -269,9 +269,16 @@ export function SearchPage() {
                   <X size={16} aria-hidden="true" />
                 </button>
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-3 pt-10">
-                  <span className="mb-1.5 inline-block rounded-full border border-white/40 px-2 py-0.5 text-xs text-white">
-                    {selected.category}
-                  </span>
+                  <div className="mb-1.5 flex flex-wrap gap-1">
+                    {selected.categories.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-block rounded-full border border-white/40 px-2 py-0.5 text-xs text-white"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
                   <p className="font-heading text-lg font-semibold leading-tight text-white">{selected.title}</p>
                   <p className="text-sm text-white/80">{selected.author}</p>
                 </div>

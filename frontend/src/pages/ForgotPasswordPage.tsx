@@ -1,23 +1,34 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, EnvelopeSimple, PaperPlaneTilt } from "@phosphor-icons/react";
 
-import { requestPasswordReset } from "../services/supabaseClient";
+import { authErrorMessage, requestPasswordReset } from "../services/supabaseClient";
 import { AuthLayout } from "../components/auth/AuthLayout";
-import { AuthField } from "../components/auth/AuthField";
+import { AuthField, AuthFormError } from "../components/auth/AuthField";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    setError(null);
     setIsSubmitting(true);
-    await requestPasswordReset(email);
+    const { error: resetError } = await requestPasswordReset(email);
     setIsSubmitting(false);
-    // Always show the same confirmation regardless of whether the email exists —
-    // don't leak which addresses have accounts.
+    if (resetError) {
+      // A real failure (rate limit, network, provider down) — must NOT show the
+      // "check your email" screen, or the reader thinks a link is coming when it
+      // never was. Supabase itself already hides "email doesn't have an account"
+      // by always returning success for that case, so any error reaching here is
+      // a genuine one worth surfacing.
+      setError(authErrorMessage(resetError, "Không thể gửi email — vui lòng thử lại."));
+      requestAnimationFrame(() => errorRef.current?.focus());
+      return;
+    }
     setSent(true);
   }
 
@@ -52,6 +63,9 @@ export function ForgotPasswordPage() {
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-6 flex flex-col gap-4">
+        <div ref={errorRef} tabIndex={-1}>
+          <AuthFormError message={error} />
+        </div>
         <AuthField
           label="Email"
           type="email"

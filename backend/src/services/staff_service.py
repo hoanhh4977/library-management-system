@@ -4,10 +4,12 @@ from datetime import date
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import get_settings
 from src.models.profile import Profile
+from src.services.supabase_admin import delete_auth_user
 
 
 class StaffServiceError(Exception):
@@ -56,3 +58,27 @@ async def create_librarian(
     session.add(librarian)
     await session.commit()
     return librarian, temporary_password
+
+
+async def delete_librarian(session: AsyncSession, *, librarian_id: uuid.UUID) -> None:
+    """Admin removes a Nhân viên thủ thư account entirely (profile + Supabase Auth
+    user). No locked-card concept applies to staff (that's a reader-only notion), so
+    the only real guard is the database's own foreign keys: a librarian who has ever
+    processed a loan/unlock-request/compensation still has rows pointing at them, and
+    Postgres rejects the delete outright — surfaced here as a clear 409 rather than a
+    raw IntegrityError, instead of silently cascading away real transaction history.
+    """
+    librarian = await session.get(Profile, librarian_id)
+    if librarian is None or librarian.role != "librarian":
+        raise LookupError("Không tìm thấy Nhân viên thủ thư")
+
+    try:
+        await session.delete(librarian)
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise StaffServiceError(
+            "Không thể xoá — nhân viên này đã có lịch sử giao dịch trong hệ thống"
+        ) from exc
+
+    await delete_auth_user(librarian_id)

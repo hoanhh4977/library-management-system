@@ -17,6 +17,7 @@ import {
 import { useLogout } from "../../hooks/useLogout";
 import { useMe } from "../../hooks/useMe";
 import { Avatar } from "../Avatar";
+import { RefreshButton } from "../RefreshButton";
 import { ThemeToggle } from "../ThemeToggle";
 import { NotificationBell } from "../NotificationBell";
 import { PageHeaderProvider, usePageHeaderValue } from "./PageHeaderContext";
@@ -123,6 +124,7 @@ function Topbar({
       )}
 
       <div className="ml-auto flex items-center gap-3">
+        <RefreshButton />
         <ThemeToggle />
         <NotificationBell role={role} />
         {header?.action}

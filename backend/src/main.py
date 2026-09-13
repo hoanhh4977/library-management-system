@@ -1,13 +1,24 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api import auth, books, cards, librarians, loan_requests, loans, me, readers, reports
 from src.core.config import get_settings
 from src.core.logging import RequestLoggingMiddleware
+from src.core.scheduler import start_scheduler, stop_scheduler
 
 settings = get_settings()
 
-app = FastAPI(title="Library Management System API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+
+app = FastAPI(title="Library Management System API", lifespan=lifespan)
 
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(

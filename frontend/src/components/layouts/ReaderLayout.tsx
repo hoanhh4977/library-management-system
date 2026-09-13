@@ -11,6 +11,7 @@ import {
 import { useLogout } from "../../hooks/useLogout";
 import { useMe } from "../../hooks/useMe";
 import { Avatar } from "../Avatar";
+import { RefreshButton } from "../RefreshButton";
 import { StatusBadge } from "../StatusBadge";
 import { ThemeToggle } from "../ThemeToggle";
 import { PageHeaderProvider, usePageHeaderValue } from "./PageHeaderContext";
@@ -42,6 +43,7 @@ function Topbar({ collapsed, onToggleCollapsed }: { collapsed: boolean; onToggle
 
       <div className="ml-auto flex items-center gap-3">
         {me?.library_card && <StatusBadge status={me.library_card.status} />}
+        <RefreshButton />
         <ThemeToggle />
       </div>
     </header>

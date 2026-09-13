@@ -7,7 +7,7 @@ export interface BookInput {
   title: string;
   author: string;
   publisher: string;
-  category: string;
+  categories: string[];
   quantity: number;
   cover_image_url?: string | null;
 }

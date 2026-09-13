@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.core.config import get_settings
 from src.core.db import SessionLocal, engine
 from src.models.book import Book
+from src.models.category import BookCategory, Category
 from src.models.library_card import LibraryCard
 from src.models.loan import Loan
 from src.models.loan_detail import LoanDetail
@@ -113,8 +114,19 @@ async def main() -> None:
             if existing:
                 seeded_books.append(existing)
                 continue
-            book = Book(id=uuid.uuid4(), code=f"S{uuid.uuid4().hex[:6].upper()}", **b)
+            category_name = b["category"]
+            book_fields = {k: v for k, v in b.items() if k != "category"}
+            book = Book(id=uuid.uuid4(), code=f"S{uuid.uuid4().hex[:6].upper()}", **book_fields)
             session.add(book)
+            await session.flush()
+            category = (
+                await session.execute(select(Category).where(Category.name == category_name))
+            ).scalar_one_or_none()
+            if category is None:
+                category = Category(id=uuid.uuid4(), name=category_name)
+                session.add(category)
+                await session.flush()
+            session.add(BookCategory(book_id=book.id, category_id=category.id))
             seeded_books.append(book)
         await session.commit()
         print(f"books ready: {len(seeded_books)}")
