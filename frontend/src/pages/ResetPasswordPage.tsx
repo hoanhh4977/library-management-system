@@ -15,6 +15,7 @@ export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,11 @@ export function ResetPasswordPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Xác nhận mật khẩu không khớp.");
+      requestAnimationFrame(() => errorRef.current?.focus());
+      return;
+    }
     setIsSubmitting(true);
     const { error: updateError } = await updatePassword(password);
     setIsSubmitting(false);
@@ -64,6 +70,14 @@ export function ResetPasswordPage() {
             autoFocus
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+          />
+          <AuthPasswordField
+            label="Xác nhận mật khẩu mới"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
           />
           <button
             type="submit"
