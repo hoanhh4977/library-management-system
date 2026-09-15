@@ -154,7 +154,7 @@ export function RegisterPage() {
           disabled={isSubmitting}
           className="mt-1 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Đang gửi link xác nhận…" : "Gửi link xác nhận qua Email"}
+          {isSubmitting ? "Đang xác nhận đăng ký…" : "Xác nhận đăng ký"}
           {!isSubmitting && <PaperPlaneTilt size={16} aria-hidden="true" />}
         </button>
       </form>

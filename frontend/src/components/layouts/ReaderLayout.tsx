@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import {
   BookOpenText,
   ClipboardText,
+  List,
   MagnifyingGlass,
   SidebarSimple,
   SignOut,
@@ -14,6 +15,7 @@ import { Avatar } from "../Avatar";
 import { RefreshButton } from "../RefreshButton";
 import { StatusBadge } from "../StatusBadge";
 import { ThemeToggle } from "../ThemeToggle";
+import { MobileNavDrawer } from "./MobileNavDrawer";
 import { PageHeaderProvider, usePageHeaderValue } from "./PageHeaderContext";
 
 const READER_NAV = [
@@ -59,6 +61,7 @@ export function ReaderLayout() {
   const { data: me } = useMe();
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // See StaffLayout for why the page itself is locked while this layout is mounted:
   // Chromium mis-computes document scrollHeight with a sticky sidebar inside an
@@ -145,19 +148,36 @@ export function ReaderLayout() {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <nav className="flex flex-none gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2 lg:hidden">
-            {READER_NAV.map(({ to, label }) => (
-              <NavLink key={to} to={to} className="flex-none text-sm text-muted-foreground">
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          <div className="flex flex-none items-center gap-2 border-b border-border bg-card px-4 py-2.5 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Mở menu điều hướng"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+            >
+              <List size={19} aria-hidden="true" />
+            </button>
+            <div className="flex items-center gap-1.5 text-accent">
+              <BookOpenText size={20} weight="fill" aria-hidden="true" />
+              <span className="font-heading text-sm font-semibold">Bookary</span>
+            </div>
+          </div>
           <Topbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} />
           <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6">
             <Outlet />
           </main>
         </div>
       </div>
+
+      <MobileNavDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        items={READER_NAV}
+        accountPath="/reader/account"
+        meName={me?.full_name}
+        meCode={me?.code}
+        onLogout={() => void logout()}
+      />
     </PageHeaderProvider>
   );
 }

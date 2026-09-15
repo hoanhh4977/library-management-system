@@ -6,6 +6,7 @@ import {
   ChartBar,
   ClipboardText,
   ClockCounterClockwise,
+  List,
   Tray,
   MagnifyingGlass,
   SidebarSimple,
@@ -20,6 +21,7 @@ import { Avatar } from "../Avatar";
 import { RefreshButton } from "../RefreshButton";
 import { ThemeToggle } from "../ThemeToggle";
 import { NotificationBell } from "../NotificationBell";
+import { MobileNavDrawer } from "./MobileNavDrawer";
 import { PageHeaderProvider, usePageHeaderValue } from "./PageHeaderContext";
 
 interface NavItem {
@@ -138,6 +140,7 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
   const { data: me } = useMe();
   const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const items = role === "librarian" ? LIBRARIAN_NAV : ADMIN_NAV;
 
   // Chromium mis-computes document.documentElement's scrollHeight when a
@@ -228,19 +231,36 @@ export function StaffLayout({ role }: { role: "librarian" | "admin" }) {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <nav className="flex flex-none gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2 lg:hidden">
-            {items.map(({ to, label }) => (
-              <NavLink key={to} to={to} className="flex-none text-sm text-muted-foreground">
-                {label}
-              </NavLink>
-            ))}
-          </nav>
+          <div className="flex flex-none items-center gap-2 border-b border-border bg-card px-4 py-2.5 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Mở menu điều hướng"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
+            >
+              <List size={19} aria-hidden="true" />
+            </button>
+            <div className="flex items-center gap-1.5 text-accent">
+              <BookOpenText size={20} weight="fill" aria-hidden="true" />
+              <span className="font-heading text-sm font-semibold">Bookary</span>
+            </div>
+          </div>
           <Topbar collapsed={collapsed} onToggleCollapsed={() => setCollapsed((c) => !c)} role={role} />
           <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6">
             <Outlet />
           </main>
         </div>
       </div>
+
+      <MobileNavDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        items={items}
+        accountPath={`/${role}/account`}
+        meName={me?.full_name}
+        meCode={me?.code}
+        onLogout={() => void logout()}
+      />
     </PageHeaderProvider>
   );
 }
